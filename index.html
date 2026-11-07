@@ -147,7 +147,12 @@ async function api(fn, ...args){
   try{
     r = await fetch(window.CONFIG.API_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
       body: JSON.stringify({ fn: fn, args: args, ses: S.ses || '' }), redirect:'follow' });
-  }catch(e){ throw new Error('Sin conexión. Revisá internet e intentá de nuevo.'); }
+  }catch(e){
+    if(navigator.onLine === false) throw new Error('Sin conexión. Revisá internet e intentá de nuevo.');
+    if(!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(String(window.CONFIG.API_URL)))
+      throw new Error('La URL del motor en config.js no es correcta: tiene que empezar con https://script.google.com/macros/s/ y terminar en /exec.');
+    throw new Error('No se pudo conectar con el motor (Apps Script). Revisá que la implementación esté como "Ejecutar como: Yo" y "Quién tiene acceso: Cualquier persona", y que sea una versión nueva.');
+  }
   let j;
   try{ j = await r.json(); }
   catch(e){ throw new Error('El motor no respondió bien (' + r.status + '). Revisá que la implementación de Apps Script tenga acceso "Cualquier persona".'); }
