@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Gestor del Hogar</title>
+<meta name="theme-color" content="#2459d6">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<script src="config.js"></script>
+<script src="https://accounts.google.com/gsi/client" async></script>
+<style>
+  :root{
+    --bg:#f2f4f8; --card:#fff; --txt:#1d2433; --sub:#6b7489; --linea:#e4e8ef;
+    --pri:#2459d6; --pri2:#e8eefc; --ok:#1f9d55; --ok2:#e6f6ed; --mal:#d64545; --mal2:#fdecec; --warn:#c77c02; --warn2:#fff4e0; --gris2:#eef0f4;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0f131a; --card:#1a202b; --txt:#e8ecf3; --sub:#97a0b3; --linea:#2a3240;
+      --pri:#6d95ff; --pri2:#1f2a44; --ok:#4cc985; --ok2:#173326; --mal:#ff7a7a; --mal2:#3a1e22; --warn:#f0b04a; --warn2:#3a2e17; --gris2:#252c38; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt);font-size:15px}
+  header{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--linea)}
+  .top{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;max-width:900px;margin:0 auto}
+  .top h1{font-size:17px;margin:0}
+  .top .seccion{font-size:13px;color:var(--sub);margin-top:2px}
+  .top small{color:var(--sub)}
+  main{padding:14px 16px 100px;max-width:900px;margin:0 auto}
+
+  .barra-inf{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--card);border-top:1px solid var(--linea);
+    display:grid;grid-template-columns:1fr 1fr 1fr;padding:6px 8px calc(6px + env(safe-area-inset-bottom))}
+  .barra-inf button{border:0;background:transparent;color:var(--sub);font-size:12px;padding:6px 0;border-radius:12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+  .barra-inf button .ic{font-size:20px;line-height:1}
+  .barra-inf button.on{color:var(--pri);font-weight:600}
+  .barra-inf button.mas .ic{background:var(--pri);color:#fff;width:40px;height:30px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px}
+
+  .grid2{display:grid;grid-template-columns:1fr;gap:10px}
+  @media (min-width:700px){ .grid2{grid-template-columns:1fr 1fr} }
+  .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .tile{background:var(--card);border:1px solid var(--linea);border-radius:16px;padding:16px 14px;text-align:left;cursor:pointer;color:var(--txt);min-height:104px;display:flex;flex-direction:column;gap:6px;font:inherit}
+  .tile .ic{font-size:26px}
+  .tile b{font-size:15px}
+  .tile span{font-size:12px;color:var(--sub)}
+  .card{background:var(--card);border:1px solid var(--linea);border-radius:16px;padding:14px;margin-bottom:12px}
+  .card h3{margin:0 0 10px;font-size:15px}
+  .titulo{font-size:15px;font-weight:700;margin:18px 2px 10px;display:flex;align-items:center;gap:8px}
+  .blk{background:var(--card);border:1px solid var(--linea);border-radius:16px;padding:14px}
+  .blk.ok{border-left:4px solid var(--ok)} .blk.pend{border-left:4px solid var(--warn)} .blk.mal{border-left:4px solid var(--mal)} .blk.gris{border-left:4px solid var(--linea);opacity:.8}
+  .blk-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+  .blk-top .n{font-weight:700;font-size:15px}
+  .blk-top .m{text-align:right;white-space:nowrap;font-weight:700;font-size:16px}
+  .blk-acc{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:6px;margin-top:12px}
+  .blk-acc .btn{width:100%;padding:9px 6px;font-size:13px}
+  .mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .mini-grid div{background:var(--bg);border-radius:10px;padding:8px}
+  .mini-grid span{display:block;font-size:11px;color:var(--sub)}
+  .mini-grid b{font-size:14px}
+
+  .mesbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;background:var(--card);border:1px solid var(--linea);border-radius:14px;padding:6px}
+  .mesbar b{font-size:16px;text-transform:capitalize}
+  .btn{border:0;background:var(--pri);color:#fff;padding:11px 14px;border-radius:12px;font-size:15px;cursor:pointer}
+  .btn.sec{background:var(--pri2);color:var(--pri)}
+  .btn.peligro{background:var(--mal2);color:var(--mal)}
+  .btn.gris{background:var(--gris2);color:var(--sub)}
+  .btn.full{width:100%}
+  .btn:disabled{opacity:.5}
+  .icono{border:0;background:var(--pri2);color:var(--pri);width:40px;height:40px;border-radius:10px;font-size:20px;cursor:pointer}
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media (min-width:700px){ .kpis{grid-template-columns:repeat(4,1fr)} }
+  .kpi{background:var(--card);border:1px solid var(--linea);border-radius:16px;padding:12px}
+  .kpi span{display:block;color:var(--sub);font-size:12px}
+  .kpi b{display:block;font-size:17px;margin-top:4px;word-break:break-word}
+  .kpi i{display:block;font-style:normal;font-size:12px;color:var(--sub);margin-top:4px}
+  .kpi.destacado{grid-column:1/-1}
+  .pos{color:var(--ok)} .neg{color:var(--mal)}
+  .fila{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--linea)}
+  .fila:last-child{border-bottom:0}
+  .t{font-weight:600}
+  .s{color:var(--sub);font-size:13px}
+  .der{text-align:right;white-space:nowrap}
+  .chip{display:inline-block;font-size:12px;padding:3px 9px;border-radius:999px;background:var(--pri2);color:var(--pri);margin-top:6px}
+  .chip.ok{background:var(--ok2);color:var(--ok)} .chip.pend{background:var(--warn2);color:var(--warn)} .chip.mal{background:var(--mal2);color:var(--mal)} .chip.gris{background:var(--gris2);color:var(--sub)}
+  .estim{font-size:11px;color:var(--warn);text-transform:uppercase;letter-spacing:.03em;font-weight:600}
+  .barra{height:6px;background:var(--linea);border-radius:4px;overflow:hidden;margin-top:10px}
+  .barra div{height:100%;background:var(--pri)}
+  label{display:block;font-size:13px;color:var(--sub);margin:12px 0 4px}
+  input,select,textarea{width:100%;padding:11px;border:1px solid var(--linea);border-radius:12px;background:var(--bg);color:var(--txt);font-size:16px}
+  .dos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .opciones{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin-bottom:6px}
+  .opciones button{border:1px solid var(--linea);background:var(--card);color:var(--txt);padding:12px 8px;border-radius:12px;font-size:14px;cursor:pointer}
+  .opciones button.on{border-color:var(--pri);background:var(--pri2);color:var(--pri);font-weight:600}
+  .nota{font-size:13px;color:var(--sub);background:var(--pri2);border-radius:12px;padding:10px;margin-top:10px}
+  .ecuacion .fila{padding:8px 0}
+  .ecuacion .total{border-top:2px solid var(--linea);font-weight:700}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:7px 6px;border-bottom:1px solid var(--linea);text-align:right;white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  .vacio{color:var(--sub);text-align:center;padding:16px 8px}
+  .det{margin-top:10px;padding:8px 10px;background:var(--bg);border-radius:10px;font-size:13px}
+  .det div{display:flex;justify-content:space-between;gap:8px;padding:3px 0}
+  #toast{position:fixed;left:50%;bottom:86px;transform:translateX(-50%);background:#1d2433;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;display:none;z-index:20;max-width:90%}
+  #modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:15}
+  #modal .hoja{background:var(--card);width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:16px 16px 24px;max-height:90vh;overflow:auto}
+  .cargando{color:var(--sub);text-align:center;padding:30px 0}
+  .error{background:var(--mal2);color:var(--mal);padding:14px;border-radius:12px}
+  .checks label{display:flex;align-items:center;gap:10px;color:var(--txt);font-size:15px;margin:10px 0;background:var(--bg);padding:12px;border-radius:12px}
+  .checks input{width:20px;height:20px}
+  .mrow{border:1px solid var(--linea);border-radius:12px;padding:4px 10px 10px;margin-top:10px}
+  .login{max-width:380px;margin:8vh auto 0;text-align:center}
+  .login img{width:96px;height:96px;border-radius:22px}
+  .login h2{margin:16px 0 6px}
+  #gbtn{display:flex;justify-content:center;margin:22px 0 10px;min-height:44px}
+</style>
+</head>
+<body>
+<header>
+  <div class="top"><div><h1 id="hogar">Gestor del Hogar</h1><div class="seccion" id="seccion"></div></div><div style="text-align:right"><span id="estado" class="chip pend" style="display:none;margin:0 0 2px"></span><br><small id="quien"></small></div></div>
+</header>
+<main id="app"><div class="cargando">Cargando…</div></main>
+<nav class="barra-inf">
+  <button id="bInicio" onclick="ir('inicio')"><span class="ic">⌂</span>Inicio</button>
+  <button id="bCargar" class="mas" onclick="ir('cargar')"><span class="ic">＋</span>Cargar</button>
+  <button id="bMenu" onclick="ir('menu')"><span class="ic">☰</span>Menú</button>
+</nav>
+<div id="modal"><div class="hoja" id="modalHoja"></div></div>
+<div id="toast"></div>
+
+<script>
+const S = { ini:null, tab:'inicio', periodo:null, tipoCarga:'gasto', verTerminadas:false, items:[], movs:[], ings:[], compras:[] };
+const SECCIONES = {
+  movimientos:['📋','Movimientos','Gastos e ingresos del mes'],
+  fijos:['🔁','Gastos fijos','Alquiler, servicios, débitos'],
+  tarjetas:['💳','Tarjetas','Resúmenes y compras en cuotas'],
+  creditos:['🏦','Créditos','Cuotas, saldo e interés'],
+  cuentas:['👛','Cuentas','Saldos y movimientos'],
+  flujo:['📈','Flujo de fondos','Próximos 12 meses'],
+  usuarios:['👥','Usuarios','Quién entra y qué ve'],
+  config:['⚙️','Configuración','Dólar, categorías, avisos']
+};
+const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+const TIPO_TXT = {Tarjeta:'Resumen de tarjeta', Credito:'Crédito', Fijo:'Gasto fijo', Gasto:'Gasto a pagar', Ingreso:'Ingreso'};
+
+// ---------- utilidades ----------
+async function api(fn, ...args){
+  let r;
+  try{
+    r = await fetch(window.CONFIG.API_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({ fn: fn, args: args, ses: S.ses || '' }), redirect:'follow' });
+  }catch(e){ throw new Error('Sin conexión. Revisá internet e intentá de nuevo.'); }
+  let j;
+  try{ j = await r.json(); }
+  catch(e){ throw new Error('El motor no respondió bien (' + r.status + '). Revisá que la implementación de Apps Script tenga acceso "Cualquier persona".'); }
+  if(!j.ok){
+    if(j.error === 'SESION'){ salirLocal(); mostrarLogin('Tu sesión venció. Ingresá de nuevo.'); }
+    throw new Error(j.error === 'SESION' ? 'Ingresá de nuevo.' : j.error);
+  }
+  return j.data;
+}
+const $ = id => document.getElementById(id);
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function js(o){ return esc(JSON.stringify(o)); }
+function numF(v){ const s=String(v??'').trim(); if(!s) return 0; const n = /,\d{1,2}$/.test(s) ? Number(s.replace(/\./g,'').replace(',','.')) : Number(s.replace(/,/g,'')); return isNaN(n)?0:n; }
+function plata(n, mon){ n = Number(n)||0; return (mon==='USD'?'US$ ':'$ ') + n.toLocaleString('es-AR',{maximumFractionDigits: mon==='USD'?2:0}); }
+function dos(o){ if(!o) return '—'; const p=[]; if(o.ARS||!o.USD) p.push(plata(o.ARS,'ARS')); if(o.USD) p.push(plata(o.USD,'USD')); return p.join('<br>'); }
+function linea(o){ return dos(o).replace('<br>',' + '); }
+function hay(o){ return !!o && ((o.ARS||0) > 0 || (o.USD||0) > 0); }
+function equiv(o){ if(!o) return 0; return (Number(o.ARS)||0) + (Number(o.USD)||0) * (S.ini.cotizacion||0); }
+function sumarMeses(p,n){ let y=+p.slice(0,4), m=+p.slice(5,7)+n; y+=Math.floor((m-1)/12); m=((m-1)%12+12)%12+1; return y+'-'+String(m).padStart(2,'0'); }
+function nombreMes(p){ return MESES[+p.slice(5,7)-1] + ' ' + p.slice(0,4); }
+function corto(p){ return MESES[+p.slice(5,7)-1].slice(0,3) + '-' + p.slice(2,4); }
+function fechaCorta(f){ return f ? String(f).slice(8,10)+'/'+String(f).slice(5,7) : ''; }
+function toast(t){ const e=$('toast'); e.textContent=t; e.style.display='block'; clearTimeout(e._t); e._t=setTimeout(()=>e.style.display='none',3500); }
+function errorMsg(e){ return (e && e.message) ? e.message : String(e); }
+function abrirModal(html){ $('modalHoja').innerHTML=html; $('modal').style.display='flex'; $('modalHoja').scrollTop=0; }
+function cerrarModal(){ $('modal').style.display='none'; }
+$('modal').addEventListener('click', e => { if(e.target.id==='modal') cerrarModal(); });
+function puede(m){ return S.ini.usuario.permisos.indexOf(m) >= 0; }
+function opciones(arr, sel){ return arr.map(x => `<option ${x===sel?'selected':''}>${esc(x)}</option>`).join(''); }
+function opcCuentas(moneda, sel, conVacio){
+  const cs = (S.ini.cuentas||[]).filter(c => !moneda || c.moneda === moneda);
+  return (conVacio ? `<option value="">— No asociar a una cuenta —</option>` : '') +
+    cs.map(c => `<option value="${c.id}" ${c.id===sel?'selected':''}>${esc(c.nombre)} · ${esc(c.titular)} (${c.moneda})</option>`).join('');
+}
+function opcTarjetas(sel){ return S.ini.tarjetas.length ? S.ini.tarjetas.map(t=>`<option value="${t.id}" ${t.id===sel?'selected':''}>${esc(t.nombre)}</option>`).join('') : '<option value="">Primero cargá una tarjeta</option>'; }
+function cuentaDefault(moneda, preferida){
+  const cs = (S.ini.cuentas||[]).filter(c => c.moneda === moneda);
+  if(preferida && cs.some(c => c.id === preferida)) return preferida;
+  const mia = cs.find(c => c.titular === S.ini.usuario.nombre);
+  return (mia || cs[0] || {}).id || '';
+}
+function hayCuentas(){ return (S.ini.cuentas||[]).length > 0; }
+function botonesModal(idOk, txt){ return `<div class="dos" style="margin-top:16px"><button class="btn gris" onclick="cerrarModal()">Cancelar</button><button class="btn" id="${idOk}">${txt||'Guardar'}</button></div>`; }
+function textoInteres(x, mon){
+  if(!x) return '';
+  return `Interés ${plata(x.interes,mon)} (${x.pct}% sobre ${plata(x.capital,mon)})` + (x.tem ? ` · tasa ≈ ${x.tem}% mensual, ${x.tea}% anual efectiva` : '');
+}
+function fallo(e){ $('app').innerHTML = `<div class="error">${esc(errorMsg(e))}</div>`; }
+
+// ---------- navegación ----------
+function claveLocal(){ return 'gh_pq_' + (S.email || ''); }
+async function iniciar(){
+  try{ S.ses = localStorage.getItem('gh_ses') || ''; S.email = localStorage.getItem('gh_email') || ''; }catch(e){}
+  if(!S.ses){ mostrarLogin(); return; }
+  S.periodo = hoyCliente().slice(0,7);
+  let local = null;
+  try{ local = JSON.parse(localStorage.getItem(claveLocal()) || 'null'); }catch(e){}
+  if(local && local.ini){
+    aplicarPaquete(local, true);
+    estado('Actualizando…');
+    arrancarVista();
+  }
+  try{
+    const pq = await api('paquete', S.periodo);
+    aplicarPaquete(pq);
+    estado('');
+    if(!local) arrancarVista(); else ir(S.tab, true);
+  }catch(e){
+    estado('');
+    if(!S.ses) return; // ya se mostró el ingreso
+    if(/no tiene acceso/i.test(errorMsg(e))){ salirLocal(); mostrarLogin(errorMsg(e)); return; }
+    if(!local) fallo(e); else toast('Sin conexión: mostrando lo último guardado');
+  }
+}
+
+// ---------- ingreso con Google ----------
+function mostrarLogin(msg){
+  document.querySelector('.barra-inf').style.display = 'none';
+  $('hogar').textContent = 'Gestor del Hogar'; $('quien').textContent = ''; $('seccion').textContent = '';
+  $('app').innerHTML = `<div class="login card"><img src="icons/icon-192.png" alt="">
+    <h2>Gestor del Hogar</h2><div class="s">Ingresá con tu cuenta de Google. Solo pueden entrar las cuentas dadas de alta.</div>
+    <div id="gbtn"><span class="s">Cargando…</span></div>
+    ${msg ? `<div class="error" style="margin-top:8px">${esc(msg)}</div>` : ''}
+    ${S.instalar ? `<button class="btn sec full" style="margin-top:12px" onclick="instalarApp()">📲 Instalar la app</button>` : ''}</div>`;
+  prepararBotonGoogle();
+}
+function prepararBotonGoogle(intentos){
+  intentos = intentos || 0;
+  if(!(window.google && google.accounts && google.accounts.id)){
+    if(intentos > 50){ $('gbtn').innerHTML = '<span class="s">No se pudo cargar el ingreso de Google. Revisá la conexión.</span>'; return; }
+    setTimeout(() => prepararBotonGoogle(intentos + 1), 200); return;
+  }
+  if(String(window.CONFIG.GOOGLE_CLIENT_ID).indexOf('PEGAR_ACA') >= 0){ $('gbtn').innerHTML = '<span class="error">Falta completar config.js</span>'; return; }
+  google.accounts.id.initialize({ client_id: window.CONFIG.GOOGLE_CLIENT_ID, callback: alIngresarGoogle, ux_mode: 'popup', use_fedcm_for_prompt: true });
+  google.accounts.id.renderButton($('gbtn'), { theme:'filled_blue', size:'large', shape:'pill', text:'signin_with', locale:'es' });
+}
+async function alIngresarGoogle(resp){
+  $('gbtn').innerHTML = '<span class="s">Verificando…</span>';
+  try{
+    const r = await api('login', resp.credential, location.href);
+    S.ses = r.ses; S.email = r.email;
+    try{ localStorage.setItem('gh_ses', r.ses); localStorage.setItem('gh_email', r.email); }catch(e){}
+    document.querySelector('.barra-inf').style.display = '';
+    S.tab = 'inicio';
+    iniciar();
+  }catch(e){ mostrarLogin(errorMsg(e)); }
+}
+function salirLocal(){
+  try{ localStorage.removeItem(claveLocal()); localStorage.removeItem('gh_ses'); localStorage.removeItem('gh_email'); }catch(e){}
+  S.ses = ''; S.email = ''; S.data = null; S.meses = {};
+}
+async function cerrarSesion(){
+  if(!confirm('¿Cerrar la sesión en este celular?')) return;
+  try{ await api('logout'); }catch(e){}
+  salirLocal();
+  try{ google.accounts.id.disableAutoSelect(); }catch(e){}
+  mostrarLogin();
+}
+
+// ---------- instalar como app ----------
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); S.instalar = e; if(S.tab === 'menu') vMenu(); });
+window.addEventListener('appinstalled', () => { S.instalar = null; toast('App instalada'); });
+async function instalarApp(){
+  if(!S.instalar){ toast('Abrí el menú de Chrome (⋮) y elegí "Instalar app"'); return; }
+  S.instalar.prompt(); await S.instalar.userChoice; S.instalar = null;
+}
+if('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
+
+function arrancarVista(){
+  document.querySelector('.barra-inf').style.display = '';
+  $('hogar').textContent = S.ini.hogar;
+  $('quien').textContent = S.ini.usuario.nombre;
+  $('bCargar').style.display = puede('cargar') ? '' : 'none';
+  ir(S.tab && S.tab!=='inicio' ? S.tab : (puede('inicio') ? 'inicio' : 'menu'), true);
+}
+function hoyCliente(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function aplicarPaquete(pq, desdeLocal){
+  S.data = pq; S.ini = pq.ini;
+  S.meses = Object.assign({}, pq.meses);
+  if(!desdeLocal){ try{ localStorage.setItem(claveLocal(), JSON.stringify(pq)); }catch(e){} prefetch(); }
+}
+async function datosMes(p){
+  if(S.meses[p]) return S.meses[p];
+  estado('Cargando…');
+  try{ Object.assign(S.meses, await api('vistaMeses', [p])); } finally { estado(''); }
+  return S.meses[p];
+}
+function prefetch(){
+  const ps = [sumarMeses(S.periodo,-1), sumarMeses(S.periodo,1)].filter(p => !S.meses[p]);
+  if(ps.length) api('vistaMeses', ps).then(r => Object.assign(S.meses, r)).catch(()=>{});
+}
+/** Ejecuta una acción en el servidor y recibe los datos actualizados en el mismo viaje. */
+async function accion(fn, args){
+  estado('Guardando…');
+  try{
+    const r = await api('ejecutar', fn, args, S.periodo);
+    aplicarPaquete(r.paquete);
+    return r.res;
+  } finally { estado(''); }
+}
+async function recargar(){
+  try{ await accion('recargar', []); toast('Datos actualizados'); ir(S.tab, true); }catch(e){ toast(errorMsg(e)); }
+}
+function estado(t){ $('estado').textContent = t; $('estado').style.display = t ? 'inline-block' : 'none'; }
+function ocupar(b){ if(!b) return; b.disabled = true; b.dataset.txt = b.dataset.txt || b.textContent; b.textContent = 'Guardando…'; }
+function liberar(b){ if(!b) return; b.disabled = false; if(b.dataset.txt) b.textContent = b.dataset.txt; }
+function ir(tab, sinScroll){
+  S.tab = tab;
+  $('bInicio').classList.toggle('on', tab==='inicio');
+  $('bCargar').classList.toggle('on', tab==='cargar');
+  $('bMenu').classList.toggle('on', tab!=='inicio' && tab!=='cargar');
+  $('seccion').textContent = tab==='inicio' ? '' : tab==='cargar' ? 'Cargar' : tab==='menu' ? 'Menú' : (SECCIONES[tab]||['',''])[1];
+  $('app').innerHTML = '<div class="cargando">Cargando…</div>';
+  ({inicio:vInicio, cargar:vCargar, menu:vMenu, movimientos:vMovimientos, fijos:vFijos, tarjetas:vTarjetas, creditos:vCreditos, cuentas:vCuentas, flujo:vFlujo, usuarios:vUsuarios, config:vConfig})[tab]();
+  if(!sinScroll) window.scrollTo(0,0);
+}
+function vMenu(){
+  const ks = Object.keys(SECCIONES).filter(k => puede(k));
+  $('app').innerHTML = `<div class="tiles">${ks.map(k => `<button class="tile" onclick="ir('${k}')"><span class="ic">${SECCIONES[k][0]}</span><b>${SECCIONES[k][1]}</b><span>${SECCIONES[k][2]}</span></button>`).join('')}</div>
+    ${S.instalar ? `<button class="btn full" style="margin-top:14px" onclick="instalarApp()">📲 Instalar la app en este celular</button>` : ''}
+    <button class="btn gris full" style="margin-top:14px" onclick="recargar()">↻ Volver a leer la planilla</button>
+    <div class="s" style="text-align:center;margin-top:6px">Solo hace falta si alguien editó la planilla a mano.</div>
+    <button class="btn gris full" style="margin-top:14px" onclick="cerrarSesion()">Cerrar sesión (${esc(S.email)})</button>`;
+}
+function volver(){ return `<button class="btn gris" style="margin-bottom:12px" onclick="ir('menu')">‹ Menú</button>`; }
+function barraMes(fn){
+  return `<div class="mesbar"><button class="icono" onclick="S.periodo=sumarMeses(S.periodo,-1);${fn}();prefetch()">‹</button>
+    <b>${nombreMes(S.periodo)}</b><button class="icono" onclick="S.periodo=sumarMeses(S.periodo,1);${fn}();prefetch()">›</button></div>`;
+}
+
+// ---------- INICIO ----------
+async function vInicio(){
+  try{
+    const r = (await datosMes(S.periodo)).resumen;
+    const m = r.mes, cot = S.ini.cotizacion;
+    S.items = r.egresos.concat(r.ingresos);
+    let h = barraMes('vInicio');
+
+    h += `<div class="kpis">
+      ${m.ingresos?`<div class="kpi"><span>Ingresos previstos</span><b>${dos(m.ingresos.previsto)}</b><i>cobrado ${linea(m.ingresos.cobrado)}</i></div>`:''}
+      <div class="kpi"><span>Gasto estimado</span><b>${dos(m.egresos.estimado)}</b><i>del mes completo</i></div>
+      <div class="kpi"><span>Ya pagado</span><b class="pos">${dos(m.egresos.pagado)}</b></div>
+      <div class="kpi"><span>Falta pagar</span><b class="${hay(m.egresos.aPagar)?'neg':''}">${dos(m.egresos.aPagar)}</b></div>
+      ${m.saldo?`<div class="kpi destacado"><span>Saldo estimado del mes (ingresos − gastos)</span><b class="${equiv(m.saldo)<0?'neg':'pos'}">${linea(m.saldo)}</b>${cot?`<i>≈ ${plata(equiv(m.saldo),'ARS')} con dólar ${esc(S.ini.cotizacionTipo)}</i>`:''}</div>`:''}
+    </div>`;
+
+    if(r.disponible){
+      const D = r.disponible;
+      h += `<div class="card ecuacion" style="margin-top:12px"><h3>Disponible</h3>
+        <div class="fila"><div>Hoy en las cuentas</div><div class="der t">${dos(D.enCuentas)}</div></div>
+        ${puede('ingresos')?`<div class="fila"><div>+ Falta cobrar</div><div class="der pos">${dos(D.aCobrar)}</div></div>`:''}
+        <div class="fila"><div>− Falta pagar <span class="estim">estimado</span></div><div class="der neg">${dos(D.aPagar)}</div></div>
+        <div class="fila total"><div>Disponible a fin de mes</div><div class="der ${equiv(D.finDeMes)<0?'neg':'pos'}">${dos(D.finDeMes)}</div></div>
+        <div class="s" style="margin-top:6px">Las cuentas solo cambian cuando confirmás un pago o un cobro.</div></div>`;
+    }
+
+    const cerrado = i => i.confirmado || i.omitido;
+    const orden = (a,b) => (cerrado(a) - cerrado(b)) || (a.vence < b.vence ? -1 : 1);
+    const pend = r.egresos.filter(i => !cerrado(i)).length;
+    h += `<div class="titulo">A pagar en ${MESES[+S.periodo.slice(5,7)-1]} ${pend?`<span class="chip pend" style="margin:0">${pend} pendiente${pend>1?'s':''}</span>`:''}</div>`;
+    if(!r.egresos.length) h += `<div class="card vacio">No hay vencimientos. Cargá gastos fijos, tarjetas o créditos desde el Menú.</div>`;
+    h += `<div class="grid2">${r.egresos.slice().sort(orden).map(it => bloqueItem(it, S.items.indexOf(it))).join('')}</div>`;
+
+    if(r.ingresos.length){
+      h += `<div class="titulo">Ingresos esperados</div><div class="grid2">${r.ingresos.slice().sort(orden).map(it => bloqueItem(it, S.items.indexOf(it))).join('')}</div>`;
+    }
+
+    const T = m.porTipo;
+    h += `<div class="titulo">Resumen del mes</div><div class="grid2">
+      <div class="card" style="margin:0"><h3>Cómo se compone el gasto</h3>
+      <div class="fila"><div>Tarjetas</div><div class="der">${dos(T.Tarjeta)}</div></div>
+      ${puede('creditos')?`<div class="fila"><div>Créditos</div><div class="der">${dos(T.Credito)}</div></div>`:''}
+      <div class="fila"><div>Gastos fijos y débitos</div><div class="der">${dos(T.Fijo)}</div></div>
+      <div class="fila"><div>Otros gastos</div><div class="der">${dos(T.Gasto)}</div></div></div>`;
+    const s = r.siguiente;
+    h += `<div class="card" style="margin:0"><h3>Mirando ${nombreMes(s.periodo)}</h3>
+      <div class="fila"><div>Gasto estimado</div><div class="der">${dos(s.egresos.estimado)}</div></div>
+      ${s.ingresos ? `<div class="fila"><div>Ingresos previstos</div><div class="der">${dos(s.ingresos.previsto)}</div></div>
+      <div class="fila"><div>Saldo estimado</div><div class="der ${equiv(s.saldo)<0?'neg':'pos'}">${dos(s.saldo)}</div></div>`:''}</div>`;
+    if(r.cuentas && r.cuentas.length){
+      h += `<div class="card" style="margin:0"><h3>Saldos en cuentas</h3>`;
+      r.cuentas.forEach(c => h += `<div class="fila"><div><div class="t">${esc(c.nombre)}</div><div class="s">${esc(c.titular)}</div></div><div class="der t ${c.saldo<0?'neg':''}">${plata(c.saldo,c.moneda)}</div></div>`);
+      h += `</div>`;
+    }
+    const lib = {ARS:0,USD:0}; r.salen.forEach(x => lib[x.moneda==='USD'?'USD':'ARS'] += Number(x.monto));
+    h += `<div class="card" style="margin:0"><h3>Este mes salimos de…</h3>`;
+    if(!r.salen.length) h += `<div class="vacio">Ninguna cuota termina este mes.</div>`;
+    r.salen.forEach(x => h += `<div class="fila"><div><div class="t">${esc(x.nombre)}</div><div class="s">${esc(x.donde)} · última cuota ${esc(x.cuota)}</div></div><div class="der">${plata(x.monto,x.moneda)}</div></div>`);
+    if(r.salen.length) h += `<div class="nota">Desde ${nombreMes(sumarMeses(S.periodo,1))} se liberan ${linea(lib)} por mes.</div>`;
+    h += `</div>`;
+    if(r.categorias.length){
+      const max = Math.max(...r.categorias.map(c => c.ARS + c.USD*(cot||0)), 1);
+      h += `<div class="card" style="margin:0"><h3>Consumos cargados</h3>`;
+      r.categorias.forEach(c => { const v=c.ARS + c.USD*(cot||0);
+        h += `<div style="margin:8px 0"><div style="display:flex;justify-content:space-between"><span>${esc(c.categoria)}</span><span>${linea(c)}</span></div><div class="barra" style="margin-top:4px"><div style="width:${Math.round(v/max*100)}%"></div></div></div>`; });
+      h += `</div>`;
+    }
+    h += `<div class="card" style="margin:0"><h3>Actividad reciente</h3>`;
+    if(!r.actividad.length) h += `<div class="vacio">Todavía no hay movimientos.</div>`;
+    r.actividad.slice(0,10).forEach(a => h += `<div class="fila"><div><div>${esc(a.detalle)}</div><div class="s">${esc(a.accion)} · ${esc(a.usuario)} · ${esc(String(a.fecha).slice(8,10)+'/'+String(a.fecha).slice(5,7)+' '+String(a.fecha).slice(11,16))}</div></div></div>`);
+    h += `</div></div>`;
+    $('app').innerHTML = h;
+  }catch(e){ fallo(e); }
+}
+
+function bloqueItem(it, idx){
+  const esIng = it.tipo === 'Ingreso';
+  let chip, clase;
+  if(it.confirmado){
+    clase = 'ok';
+    if(it.previo) chip = `<span class="chip ok">Pagado antes de usar la app</span>`;
+    else if(hay(it.arrastreOut)) chip = `<span class="chip ok">Pagado ${linea(it.real)} · el resto (${linea(it.arrastreOut)}) pasó a ${MESES[+sumarMeses(it.periodo,1).slice(5,7)-1]}</span>`;
+    else chip = `<span class="chip ok">${esIng?'Cobrado':'Pagado'} · ${esc(it.pagadoPor)}${it.fechaPago?' el '+fechaCorta(it.fechaPago):''}</span>`;
+  } else if(it.omitido){ clase='gris'; chip = `<span class="chip gris">${esIng?'No se cobra':'No se paga'} este mes</span>`; }
+  else if(it.parcial){ clase='pend'; chip = `<span class="chip pend">Pago parcial ${linea(it.real)} · resta ${linea(it.falta)}</span>`; }
+  else if(it.vence < S.ini.hoy){ clase='mal'; chip = `<span class="chip mal">Vencido</span>`; }
+  else { clase='pend'; chip = `<span class="chip pend">${esIng?'A cobrar':'Pendiente'}</span>`; }
+
+  const sub = [TIPO_TXT[it.tipo] + (it.recurrente?' mensual':''), it.cuota ? 'cuota '+it.cuota : '', it.responsable, (esIng?'':'vence ')+fechaCorta(it.vence)].filter(Boolean).map(esc).join(' · ');
+  let monto, nota = '';
+  if(it.confirmado){ monto = dos(it.real); if(!it.previo && !hay(it.arrastreOut) && (it.real.ARS!==it.ref.ARS || it.real.USD!==it.ref.USD)) nota = `<div class="s">estimado ${linea(it.ref)}</div>`; }
+  else if(it.omitido) monto = `<span class="s" style="text-decoration:line-through">${dos(it.ref)}</span>`;
+  else if(it.parcial){ monto = dos(it.falta); nota = `<div class="estim">resta pagar</div>`; }
+  else { monto = dos(it.ref); nota = `<div class="estim">${it.ajustado?'estimado ajustado':'estimado'}</div>`; }
+
+  const b = [];
+  if(!it.confirmado && !it.omitido){
+    b.push(`<button class="btn" onclick="confirmar(${idx})">${esIng?'Cobrado':it.parcial?'Pagar resto':'Pagar'}</button>`);
+    b.push(`<button class="btn sec" onclick="ajustar(${idx})">Ajustar</button>`);
+    if(it.parcial && it.tipo==='Tarjeta') b.push(`<button class="btn sec" onclick="arrastrar(${idx})">Resto al mes que viene</button>`);
+    if(!it.parcial && it.puedeOmitir) b.push(`<button class="btn gris" onclick="omitir(${idx})">No ${esIng?'cobro':'pago'}</button>`);
+  }
+  if(it.conPagos) b.push(`<button class="btn gris" onclick="deshacer(${idx},'confirmacion')">Deshacer ${it.parcial||hay(it.arrastreOut)?'pagos':esIng?'cobro':'pago'}</button>`);
+  if(it.omitido) b.push(`<button class="btn gris" onclick="deshacer(${idx},'omision')">Deshacer</button>`);
+  if(it.detalle && it.detalle.length) b.push(`<button class="btn gris" onclick="var d=$('det${idx}');d.style.display=d.style.display==='none'?'block':'none'">Detalle (${it.detalle.length})</button>`);
+
+  return `<div class="blk ${clase}">
+    <div class="blk-top"><div style="min-width:0"><div class="n">${esc(it.nombre)}</div><div class="s">${sub}</div></div><div class="m">${monto}${nota}</div></div>
+    ${chip}
+    ${it.detalle && it.detalle.length ? `<div id="det${idx}" class="det" style="display:none">${it.detalle.map(d=>`<div><span>${esc(d.descripcion)} <span class="s">${esc(d.cuota)}</span></span><span>${plata(d.monto,d.moneda)}</span></div>`).join('')}</div>`:''}
+    ${b.length?`<div class="blk-acc">${b.join('')}</div>`:''}</div>`;
+}
+
+function monedasItem(it){
+  if(it.tipo === 'Tarjeta') return (it.ref.USD > 0 || (it.falta && it.falta.USD > 0)) ? ['ARS','USD'] : ['ARS'];
+  return [it.moneda === 'USD' ? 'USD' : 'ARS'];
+}
+function confirmar(idx){
+  const it = S.items[idx], esIng = it.tipo==='Ingreso', mons = monedasItem(it);
+  const base = it.parcial ? it.falta : it.ref;
+  let h = `<h3 style="margin-top:0">${esIng?'Confirmar cobro':it.parcial?'Pagar el resto':'Confirmar pago'}</h3>
+    <div class="s">${esc(it.nombre)} · ${nombreMes(it.periodo)} · ${it.parcial?'resta '+linea(it.falta):'estimado '+linea(it.ref)}</div>`;
+  if(!esIng) h += `<label>¿Cuánto pagaste?</label><div class="opciones" id="cForma">
+      <button class="on" data-f="Total" onclick="formaPago(this)">${it.parcial?'Todo lo que resta':'El total'}</button>
+      <button data-f="Parcial" onclick="formaPago(this)">${it.tipo==='Tarjeta'?'Una parte (mínimo, parcial)':'Una parte'}</button></div>`;
+  mons.forEach(mn => {
+    h += `<div class="${mons.length>1?'mrow':''}">${mons.length>1?`<label style="font-weight:600;color:var(--txt)">En ${mn==='USD'?'dólares':'pesos'}</label>`:''}
+      <label>Monto ${esIng?'cobrado':'pagado'} (${mn})</label><input id="cm_${mn}" inputmode="decimal" value="${base[mn]||''}" data-def="${base[mn]||''}">
+      ${hayCuentas() ? `<label>${esIng?'¿A qué cuenta entró?':'¿De qué cuenta salió?'}</label><select id="cc_${mn}">${opcCuentas(mn, cuentaDefault(mn, it.cuenta_id), true)}</select>` : ''}</div>`;
+  });
+  if(mons.length>1) h += `<div class="nota">Si pagaste los dólares en pesos, sumá todo en pesos y dejá los dólares en 0.</div>`;
+  h += `<div id="cParcNota" class="nota" style="display:none">Queda pendiente lo que falte. Después podés pagar el resto${it.tipo==='Tarjeta'?' o pasarlo al resumen del mes que viene':''}.</div>
+    <label>Fecha</label><input id="cFecha" type="date" value="${S.ini.hoy}">
+    <label>Notas</label><input id="cNotas" placeholder="Opcional">${botonesModal('cOk', esIng?'Confirmar cobro':'Confirmar pago')}`;
+  abrirModal(h);
+  $('cOk').onclick = async () => { ocupar($('cOk'));
+    const f = $('cForma') ? $('cForma').querySelector('.on').dataset.f : 'Total';
+    try{
+      await accion('confirmarItem', [{tipo:it.tipo, ref_id:it.ref_id, periodo:it.periodo, nombre:it.nombre, forma:f, fecha_pago:$('cFecha').value, notas:$('cNotas').value,
+        pagos: mons.map(mn => ({monto:$('cm_'+mn).value, moneda:mn, cuenta_id: $('cc_'+mn) ? $('cc_'+mn).value : ''}))}]);
+      cerrarModal(); toast(esIng?'Cobro confirmado':f==='Parcial'?'Pago parcial registrado':'Pago confirmado'); vInicio();
+    }catch(e){ liberar($('cOk')); toast(errorMsg(e)); } };
+}
+function formaPago(btn){
+  btn.parentNode.querySelectorAll('button').forEach(b => b.classList.toggle('on', b===btn));
+  const parc = btn.dataset.f === 'Parcial';
+  $('cParcNota').style.display = parc ? 'block' : 'none';
+  document.querySelectorAll('[id^=cm_]').forEach(i => { i.value = parc ? '' : i.dataset.def; });
+  if(parc){ const i = document.querySelector('[id^=cm_]'); if(i) i.focus(); }
+}
+function ajustar(idx){
+  const it = S.items[idx], mons = it.tipo==='Tarjeta' ? ['ARS','USD'] : monedasItem(it);
+  let h = `<h3 style="margin-top:0">Ajustar monto estimado</h3><div class="s">${esc(it.nombre)} · ${nombreMes(it.periodo)}</div>`;
+  mons.forEach(mn => h += `<label>${it.tipo==='Tarjeta'?'Total del resumen':'Estimado'} en ${mn==='USD'?'dólares':'pesos'}</label><input id="am_${mn}" inputmode="decimal" value="${it.ref[mn]||''}">`);
+  if(it.ajustado) h += `<div class="s" style="margin-top:8px">Valor original: ${linea(it.estimadoOriginal)} · <a href="#" onclick="deshacer(${idx},'referencia');return false">volver al original</a></div>`;
+  h += `<div class="nota">Por ejemplo, cuando llega la factura o el resumen con el monto real. No se descuenta de ninguna cuenta hasta que confirmes el pago.</div>${botonesModal('aOk')}`;
+  abrirModal(h);
+  $('aOk').onclick = async () => { ocupar($('aOk'));
+    const montos = {}; mons.forEach(mn => montos[mn] = $('am_'+mn).value);
+    try{ await accion('ajustarItem', [{tipo:it.tipo, ref_id:it.ref_id, periodo:it.periodo, nombre:it.nombre, montos:montos}]);
+      cerrarModal(); toast('Estimado actualizado'); vInicio(); }
+    catch(e){ liberar($('aOk')); toast(errorMsg(e)); } };
+}
+async function arrastrar(idx){
+  const it = S.items[idx];
+  if(!confirm(`¿Pasar ${linea(it.falta)} al resumen de ${nombreMes(sumarMeses(it.periodo,1))}? Este resumen queda cerrado.`)) return;
+  try{ await accion('arrastrarItem', [{tipo:it.tipo, ref_id:it.ref_id, periodo:it.periodo, nombre:it.nombre}]); toast('Saldo pasado al mes que viene'); vInicio(); }catch(e){ toast(errorMsg(e)); }
+}
+async function omitir(idx){
+  const it = S.items[idx];
+  if(!confirm(`¿${it.tipo==='Ingreso'?'No se cobra':'No se paga'} "${it.nombre}" en ${nombreMes(it.periodo)}?`)) return;
+  try{ await accion('omitirItem', [{tipo:it.tipo, ref_id:it.ref_id, periodo:it.periodo, nombre:it.nombre}]); toast('Listo'); vInicio(); }catch(e){ toast(errorMsg(e)); }
+}
+async function deshacer(idx, que){
+  const it = S.items[idx];
+  if(que==='confirmacion' && !confirm('¿Deshacer? Se borran los pagos registrados de este ítem y se revierten en las cuentas.')) return;
+  try{ await accion('deshacerItem', [{tipo:it.tipo, ref_id:it.ref_id, periodo:it.periodo, nombre:it.nombre, que:que}]); cerrarModal(); toast('Deshecho'); vInicio(); }catch(e){ toast(errorMsg(e)); }
+}
+
+// ---------- FORMULARIO DE GASTO (cargar y editar) ----------
+function htmlGasto(m){
+  const I = S.ini; m = m || {};
+  const medio = m.medio || (I.tarjetas.length ? 'Tarjeta' : I.medios[0]);
+  const pagado = m.estado !== 'Pendiente';
+  return `<label>Descripción</label><input id="fDesc" value="${esc(m.descripcion||'')}" placeholder="Ej: Supermercado, zapatillas, plomero">
+    <label>Medio de pago</label><div class="opciones">${I.medios.map(x=>`<button type="button" data-v="${esc(x)}" class="${x===medio?'on':''}" onclick="elegirMedio(this)">${esc(x)}</button>`).join('')}</div>
+    <input type="hidden" id="fMedio" value="${esc(medio)}">
+    <div class="dos"><div><label id="fMontoL">Monto</label><input id="fMonto" inputmode="decimal" placeholder="0" value="${m.monto||''}" oninput="syncCuota('total')"></div>
+    <div><label>Moneda</label><select id="fMon" onchange="ctaGasto();previa()">${opciones(['ARS','USD'], m.moneda||'ARS')}</select></div></div>
+    <div id="bloqueTj">
+      <div class="dos"><div><label>Tarjeta</label><select id="fTj" onchange="previa()">${opcTarjetas(m.tarjeta_id)}</select></div>
+      <div><label>Cuotas</label><input id="fCuotas" type="number" min="1" value="${m.cuotas||1}" oninput="syncCuota('total')"></div></div>
+      <div class="dos"><div><label>Valor de cada cuota</label><input id="fValCuota" inputmode="decimal" placeholder="0" oninput="syncCuota('cuota')"></div>
+      <div><label>Precio de contado</label><input id="fContado" inputmode="decimal" placeholder="Opcional" value="${m.precio_contado||''}" oninput="previa()"></div></div>
+      <div id="previa" class="nota" style="display:none"></div>
+    </div>
+    <div id="bloqueNoTj">
+      <div class="checks"><label><input type="checkbox" id="fPagado" ${pagado?'checked':''} onchange="pagadoCambio()"> Ya está pagado</label></div>
+      <div id="bloqueCta">${hayCuentas() ? `<label>¿De qué cuenta salió?</label><select id="fCta"></select>` : ''}</div>
+      <div id="notaPend" class="nota" style="display:none">Queda como <b>pendiente</b> en Inicio con este monto estimado. No se descuenta de ninguna cuenta hasta que confirmes el pago.</div>
+    </div>
+    <div class="dos"><div><label id="fFechaL">Fecha</label><input id="fFecha" type="date" value="${esc(String(m.fecha||I.hoy).slice(0,10))}" onchange="previa()"></div>
+    <div><label>Categoría</label><select id="fCat">${opciones(I.categoriasGasto, m.categoria)}</select></div></div>
+    <div class="dos"><div><label>¿Quién?</label><select id="fQuien">${opciones(I.personas, m.quien||I.usuario.nombre)}</select></div>
+    <div><label>Notas</label><input id="fNotas" value="${esc(m.notas||'')}" placeholder="Opcional"></div></div>`;
+}
+function initGasto(m){ S._ctaPref = m && m.cuenta_id; medioCambio(); syncCuota('total'); }
+function datosGasto(){
+  return {descripcion:$('fDesc').value, monto:$('fMonto').value, moneda:$('fMon').value, fecha:$('fFecha').value,
+    categoria:$('fCat').value, medio:$('fMedio').value, tarjeta_id:$('fTj').value, cuotas:$('fCuotas').value, precio_contado:$('fContado').value,
+    pagado:$('fPagado').checked, quien:$('fQuien').value, notas:$('fNotas').value, cuenta_id: $('fCta') ? $('fCta').value : ''};
+}
+function elegirMedio(btn){ btn.parentNode.querySelectorAll('button').forEach(b => b.classList.toggle('on', b===btn)); $('fMedio').value = btn.dataset.v; medioCambio(); }
+function medioCambio(){
+  const t = $('fMedio').value==='Tarjeta';
+  $('bloqueTj').style.display = t?'block':'none';
+  $('bloqueNoTj').style.display = t?'none':'block';
+  $('fMontoL').textContent = t ? 'Total en cuotas' : 'Monto';
+  pagadoCambio(); ctaGasto(); previa();
+}
+function pagadoCambio(){
+  const t = $('fMedio').value==='Tarjeta', pag = $('fPagado').checked;
+  $('bloqueCta').style.display = (!t && pag) ? 'block' : 'none';
+  $('notaPend').style.display = (!t && !pag) ? 'block' : 'none';
+  $('fFechaL').textContent = (!t && !pag) ? 'Vence el' : 'Fecha';
+}
+function ctaGasto(){ if(!$('fCta')) return; const m=$('fMon').value;
+  $('fCta').innerHTML = opcCuentas(m, S._ctaPref ? cuentaDefault(m, S._ctaPref) : ($('fMedio').value==='Efectivo' ? '' : cuentaDefault(m)), true); }
+function syncCuota(desde){
+  if(!$('fCuotas')) return;
+  const n = Math.max(1, parseInt($('fCuotas').value)||1);
+  if(desde==='cuota'){ const v = numF($('fValCuota').value); $('fMonto').value = v ? Math.round(v*n*100)/100 : ''; }
+  else { const t = numF($('fMonto').value); $('fValCuota').value = t ? Math.round(t/n*100)/100 : ''; }
+  previa();
+}
+function previa(){
+  const p = $('previa'); if(!p) return;
+  const t = S.ini.tarjetas.find(x => x.id === $('fTj').value);
+  const f = $('fFecha').value, n = Math.max(1, parseInt($('fCuotas').value)||1), m = numF($('fMonto').value), c = numF($('fContado').value), mon = $('fMon').value;
+  if(!t || !f || $('fMedio').value!=='Tarjeta'){ p.style.display='none'; return; }
+  const d = +f.slice(8,10); let pc = f.slice(0,7); if(d > +t.dia_cierre) pc = sumarMeses(pc,1);
+  const pp = +t.dia_vencimiento > +t.dia_cierre ? pc : sumarMeses(pc,1);
+  let txt = `Primera cuota en el resumen que vence en <b>${nombreMes(pp)}</b>` + (n>1 ? `, última en <b>${nombreMes(sumarMeses(pp,n-1))}</b>.` : '.');
+  if(m && n>1) txt += ` ${n} × ${plata(m/n, mon)}.`;
+  if(m && c && m > c) txt += `<br>Interés: <b>${plata(m-c, mon)}</b> (${Math.round((m-c)/c*1000)/10}% sobre el contado).`;
+  p.style.display='block'; p.innerHTML = txt;
+}
+
+// ---------- FORMULARIO DE INGRESO (cargar y editar) ----------
+function htmlIngreso(i){
+  const I = S.ini; i = i || {};
+  const rec = !!i.recurrente, cob = i.estado !== 'Pendiente';
+  return `<label>Descripción</label><input id="iDesc" value="${esc(i.descripcion||'')}" placeholder="Ej: Sueldo, honorarios">
+    <div class="dos"><div><label>Monto</label><input id="iMonto" inputmode="decimal" placeholder="0" value="${i.monto||''}"></div>
+    <div><label>Moneda</label><select id="iMon" onchange="ctaIng()">${opciones(['ARS','USD'], i.moneda||'ARS')}</select></div></div>
+    <div class="dos"><div><label>Fecha</label><input id="iFecha" type="date" value="${esc(String(i.fecha||I.hoy).slice(0,10))}"></div>
+    <div><label>Categoría</label><select id="iCat">${opciones(I.categoriasIngreso, i.categoria)}</select></div></div>
+    <label>¿Quién?</label><select id="iQuien">${opciones(I.personas, i.quien||I.usuario.nombre)}</select>
+    <div class="checks"><label><input type="checkbox" id="iRec" ${rec?'checked':''} onchange="recCambio()"> Se repite todos los meses (sueldo)</label></div>
+    <div id="iHastaB" style="display:none"><label>Hasta (opcional)</label><input id="iHasta" type="month" value="${esc(i.hasta||'')}"></div>
+    <div id="iCobB" class="checks"><label><input type="checkbox" id="iCob" ${cob?'checked':''} onchange="recCambio()"> Ya lo cobré</label></div>
+    ${hayCuentas() ? `<label id="iCtaL">¿A qué cuenta entró?</label><select id="iCta"></select>` : ''}
+    <div id="iNota" class="nota" style="display:none"></div>
+    <label>Notas</label><input id="iNotas" value="${esc(i.notas||'')}" placeholder="Opcional">`;
+}
+function initIngreso(i){ S._ctaPrefI = i && i.cuenta_id; ctaIng(); recCambio(); }
+function datosIngreso(){
+  return {descripcion:$('iDesc').value, monto:$('iMonto').value, moneda:$('iMon').value, fecha:$('iFecha').value,
+    categoria:$('iCat').value, quien:$('iQuien').value, recurrente:$('iRec').checked, cobrado:$('iCob').checked, hasta:$('iHasta').value,
+    notas:$('iNotas').value, cuenta_id: $('iCta') ? $('iCta').value : ''};
+}
+function ctaIng(){ if(!$('iCta')) return; const m=$('iMon').value; $('iCta').innerHTML = opcCuentas(m, cuentaDefault(m, S._ctaPrefI), true); }
+function recCambio(){
+  const rec = $('iRec').checked, cob = $('iCob').checked;
+  $('iHastaB').style.display = rec ? 'block' : 'none';
+  $('iCobB').style.display = rec ? 'none' : 'block';
+  if($('iCtaL')) $('iCtaL').textContent = rec ? 'Cuenta donde suele entrar' : (cob ? '¿A qué cuenta entró?' : 'Cuenta donde va a entrar');
+  const n = $('iNota');
+  if(rec){ n.style.display='block'; n.innerHTML='Cada mes aparece en Inicio como <b>ingreso esperado</b> con este monto. Cuando cobres, tocás "Cobrado" y ponés el monto real.'; }
+  else if(!cob){ n.style.display='block'; n.innerHTML='Queda <b>a cobrar</b>: no se suma a la cuenta hasta que lo confirmes en Inicio.'; }
+  else n.style.display='none';
+}
+
+// ---------- CARGAR ----------
+function vCargar(){
+  const I = S.ini;
+  const tipos = [['gasto','💸 Gasto']].concat(puede('ingresos')?[['ingreso','💰 Ingreso']]:[]).concat(puede('cuentas')?[['transferencia','🔄 Entre cuentas']]:[]);
+  if(!tipos.some(t=>t[0]===S.tipoCarga)) S.tipoCarga='gasto';
+  let h = tipos.length>1 ? `<div class="opciones" style="margin-bottom:12px">${tipos.map(t=>`<button class="${S.tipoCarga===t[0]?'on':''}" onclick="S.tipoCarga='${t[0]}';vCargar()">${t[1]}</button>`).join('')}</div>` : '';
+  h += `<div class="card">`;
+  if(S.tipoCarga==='transferencia'){
+    const cs = I.cuentas||[];
+    if(cs.length < 2){ $('app').innerHTML = h + `<div class="vacio">Necesitás al menos dos cuentas cargadas. Agregalas en Menú › Cuentas.</div></div>`; return; }
+    const d0 = cuentaDefault('ARS') || cs[0].id;
+    const op = sel => cs.map(c=>`<option value="${c.id}" ${c.id===sel?'selected':''}>${esc(c.nombre)} · ${esc(c.titular)} (${c.moneda})</option>`).join('');
+    h += `<label>Desde</label><select id="tDesde" onchange="trfMon()">${op(d0)}</select>
+      <label>Hacia</label><select id="tHacia" onchange="trfMon()">${op((cs.find(c=>c.id!==d0)||{}).id)}</select>
+      <div class="dos"><div><label id="tMontoL">Monto</label><input id="tMonto" inputmode="decimal" placeholder="0"></div>
+      <div><label>Fecha</label><input id="tFecha" type="date" value="${I.hoy}"></div></div>
+      <div id="tDestB" style="display:none"><label id="tDestL">Monto que llegó</label><input id="tDest" inputmode="decimal" placeholder="0"><div id="tTc" class="s" style="margin-top:4px"></div></div>
+      <label>Notas</label><input id="tNotas" placeholder="Opcional">
+      <button class="btn full" id="tOk" style="margin-top:16px" onclick="guardarTrf()">Guardar transferencia</button>
+      <div class="nota">Las transferencias entre cuentas propias no cuentan como gasto: solo mueven saldo. Sirve también para compra o venta de dólares.</div></div>`;
+    $('app').innerHTML = h; trfMon(); return;
+  }
+  if(S.tipoCarga==='gasto'){
+    h += htmlGasto() + `<button class="btn full" id="fOk" style="margin-top:16px" onclick="guardarGasto()">Guardar gasto</button>
+      <div class="nota">Los resúmenes de tarjeta, las cuotas de créditos y los gastos fijos no se cargan acá: aparecen solos en Inicio para confirmarlos.</div></div>`;
+    $('app').innerHTML = h; initGasto(); return;
+  }
+  h += htmlIngreso() + `<button class="btn full" id="iOk" style="margin-top:16px" onclick="guardarIng()">Guardar ingreso</button></div>`;
+  $('app').innerHTML = h; initIngreso();
+}
+async function guardarGasto(){
+  const b=$('fOk'); ocupar(b);
+  try{ await accion('guardarMovimiento', [datosGasto()]); toast('Gasto guardado'); vCargar(); }
+  catch(e){ liberar(b); toast(errorMsg(e)); }
+}
+async function guardarIng(){
+  const b=$('iOk'); ocupar(b);
+  try{ await accion('guardarIngreso', [datosIngreso()]); toast('Ingreso guardado'); vCargar(); }
+  catch(e){ liberar(b); toast(errorMsg(e)); }
+}
+function trfMon(){
+  const cs = S.ini.cuentas, a = cs.find(c=>c.id===$('tDesde').value), b = cs.find(c=>c.id===$('tHacia').value);
+  const dist = a && b && a.moneda !== b.moneda;
+  $('tMontoL').textContent = 'Monto que sale' + (a ? ' ('+a.moneda+')' : '');
+  $('tDestB').style.display = dist ? 'block' : 'none';
+  if(dist){ $('tDestL').textContent = 'Monto que llegó ('+b.moneda+')';
+    const calc = () => { const x=numF($('tMonto').value), y=numF($('tDest').value);
+      $('tTc').textContent = x&&y ? 'Tipo de cambio: ' + plata(a.moneda==='ARS'? x/y : y/x,'ARS') : ''; };
+    $('tMonto').oninput = calc; $('tDest').oninput = calc; calc(); }
+}
+async function guardarTrf(){
+  const b=$('tOk'); ocupar(b);
+  try{
+    await accion('guardarTransferencia', [{desde_id:$('tDesde').value, hacia_id:$('tHacia').value, monto:$('tMonto').value, monto_destino:$('tDest').value, fecha:$('tFecha').value, notas:$('tNotas').value}]);
+    toast('Transferencia guardada'); vCargar();
+  }catch(e){ liberar(b); toast(errorMsg(e)); }
+}
+
+// ---------- MOVIMIENTOS ----------
+async function vMovimientos(){
+  try{
+    const r = (await datosMes(S.periodo)).movimientos;
+    S.movs = r.gastos; S.ings = r.ingresos;
+    let h = volver() + barraMes('vMovimientos');
+    h += `<div class="titulo">Gastos y compras (${r.gastos.length})</div>`;
+    if(!r.gastos.length) h += `<div class="card vacio">Sin gastos cargados en este mes.</div>`;
+    h += `<div class="grid2">` + r.gastos.map((g,i) => `<div class="blk ${g.pendiente?'pend':''}">
+      <div class="blk-top"><div style="min-width:0"><div class="n">${esc(g.descripcion)}</div>
+        <div class="s">${fechaCorta(g.fecha)} · ${esc(g.categoria)} · ${esc(g.quien)}</div>
+        <div class="s">${g.medio==='Tarjeta' ? '💳 '+esc(g.tarjeta)+(g.cuotas>1?' · '+g.cuotas+' cuotas':'') : esc(g.medio)+(g.cuenta?' · '+esc(g.cuenta):'')}</div></div>
+        <div class="m">${plata(g.monto,g.moneda)}</div></div>
+      ${g.pendiente?'<span class="chip pend">A pagar</span>':''}
+      ${g.puedeBorrar?`<div class="blk-acc"><button class="btn sec" onclick="editarGasto(${i})">Editar</button><button class="btn peligro" onclick="borrarMov('${g.id}')">Borrar</button></div>`:''}</div>`).join('') + `</div>`;
+    if(puede('ingresos')){
+      h += `<div class="titulo">Ingresos (${r.ingresos.length})</div>`;
+      if(!r.ingresos.length) h += `<div class="card vacio">Sin ingresos en este mes.</div>`;
+      h += `<div class="grid2">` + r.ingresos.map((i,k) => `<div class="blk">
+        <div class="blk-top"><div style="min-width:0"><div class="n">${esc(i.descripcion)}</div>
+          <div class="s">${fechaCorta(i.fecha)} · ${esc(i.categoria)} · ${esc(i.quien)}${i.cuenta?' · '+esc(i.cuenta):''}</div>
+          ${i.recurrente?`<div class="s">Mensual${i.hasta?' hasta '+corto(i.hasta):''} · monto estimado</div>`:''}</div>
+          <div class="m pos">${plata(i.monto,i.moneda)}</div></div>
+        ${i.puedeBorrar ? `<div class="blk-acc"><button class="btn sec" onclick="editarIng(${k})">Editar</button>${i.recurrente && !i.hasta ? `<button class="btn gris" onclick="terminarIng('${i.id}')">Terminar</button>` : ''}<button class="btn peligro" onclick="borrarIng('${i.id}')">Borrar</button></div>`:''}</div>`).join('') + `</div>`;
+    }
+    $('app').innerHTML = h;
+  }catch(e){ fallo(e); }
+}
+function editarGasto(i, desde){
+  const m = (desde || S.movs)[i];
+  abrirModal(`<h3 style="margin-top:0">Editar ${m.medio==='Tarjeta'?'compra':'gasto'}</h3>${htmlGasto(m)}${botonesModal('eOk')}`);
+  initGasto(m);
+  $('eOk').onclick = async () => { ocupar($('eOk'));
+    try{ await accion('editarMovimiento', [Object.assign({id:m.id}, datosGasto())]); cerrarModal(); toast('Guardado'); ir(S.tab); }
+    catch(e){ liberar($('eOk')); toast(errorMsg(e)); } };
+}
+function editarIng(k){
+  const i = S.ings[k];
+  abrirModal(`<h3 style="margin-top:0">Editar ingreso</h3>${htmlIngreso(i)}${botonesModal('eOk')}`);
+  initIngreso(i);
+  $('eOk').onclick = async () => { ocupar($('eOk'));
+    try{ await accion('editarIngreso', [Object.assign({id:i.id}, datosIngreso())]); cerrarModal(); toast('Guardado'); vMovimientos(); }
+    catch(e){ liberar($('eOk')); toast(errorMsg(e)); } };
+}
+async function borrarMov(id){ if(!confirm('¿Borrar este gasto? Si era en cuotas, se borran todas.')) return;
+  try{ await accion('borrarMovimiento', [id]); toast('Borrado'); ir(S.tab); }catch(e){ toast(errorMsg(e)); } }
+async function borrarIng(id){ if(!confirm('¿Borrar este ingreso?')) return;
+  try{ await accion('borrarIngreso', [id]); toast('Borrado'); vMovimientos(); }catch(e){ toast(errorMsg(e)); } }
+async function terminarIng(id){
+  if(!confirm('El ingreso deja de contarse desde '+nombreMes(S.periodo)+'. ¿Seguimos?')) return;
+  try{ await accion('terminarIngreso', [id, sumarMeses(S.periodo,-1)]); toast('Listo'); vMovimientos(); }catch(e){ toast(errorMsg(e)); } }
+
+// ---------- GASTOS FIJOS ----------
+async function vFijos(){
+  try{
+    const fs = S.data.fijos || [];
+    S._fijos = fs;
+    let h = volver() + `<button class="btn full" style="margin-bottom:12px" onclick="formFijo()">+ Agregar gasto fijo o débito automático</button>`;
+    const act = fs.filter(f => f.activo !== 'NO');
+    const tc = {ARS:0,USD:0}, tt = {ARS:0,USD:0};
+    act.forEach(f => (f.medio==='Tarjeta'?tt:tc)[f.moneda==='USD'?'USD':'ARS'] += Number(f.monto_estimado)||0);
+    if(fs.length) h += `<div class="kpis" style="margin-bottom:12px"><div class="kpi"><span>Se pagan desde cuentas</span><b>${linea(tc)}</b><i>por mes, estimado</i></div><div class="kpi"><span>Débitos en tarjeta</span><b>${linea(tt)}</b><i>por mes, estimado</i></div></div>`;
+    else h += `<div class="card vacio">Cargá lo que pagan todos los meses aunque el monto cambie: alquiler, expensas, luz, gas, internet, colegio, prepaga. También los débitos automáticos en tarjeta (streaming, seguros, gimnasio).</div>`;
+    h += `<div class="grid2">` + fs.map((f,i) => `<div class="blk ${f.activo==='NO'?'gris':''}">
+      <div class="blk-top"><div style="min-width:0"><div class="n">${esc(f.nombre)}</div>
+        <div class="s">${f.medio==='Tarjeta' ? '💳 Débito en '+esc(f.tarjeta||'tarjeta')+' el día '+f.dia_vencimiento : 'Vence el '+f.dia_vencimiento+(f.cuenta?' · desde '+esc(f.cuenta):'')}</div>
+        <div class="s">${esc(f.categoria)} · ${esc(f.responsable)} · desde ${f.desde?corto(f.desde):'—'}${f.hasta?' hasta '+corto(f.hasta):''}</div></div>
+        <div class="m">${plata(f.monto_estimado,f.moneda)}<div class="estim">estimado</div></div></div>
+      ${f.activo==='NO'?'<span class="chip mal">Inactivo</span>':''}
+      ${f.puedeEditar?`<div class="blk-acc"><button class="btn sec" onclick="formFijo(S._fijos[${i}])">Editar</button></div>`:''}</div>`).join('') + `</div>`;
+    h += `<div class="nota">Los que se pagan desde una cuenta aparecen en Inicio para confirmar cada mes. Los débitos en tarjeta se suman solos al resumen que corresponde según el día de cierre, y en el flujo cuentan como gasto fijo.</div>`;
+    $('app').innerHTML = h;
+  }catch(e){ fallo(e); }
+}
+function formFijo(f){
+  f = f || {};
+  const medio = f.medio === 'Tarjeta' ? 'Tarjeta' : 'Cuenta';
+  abrirModal(`<h3 style="margin-top:0">${f.id?'Editar':'Nuevo'} gasto fijo</h3>
+    <label>Nombre</label><input id="xNom" value="${esc(f.nombre||'')}" placeholder="Ej: Alquiler, Luz, Netflix">
+    <label>¿Cómo se paga?</label><div class="opciones">
+      <button type="button" class="${medio==='Cuenta'?'on':''}" data-v="Cuenta" onclick="medioFijo(this)">Pago desde cuenta / efectivo</button>
+      <button type="button" class="${medio==='Tarjeta'?'on':''}" data-v="Tarjeta" onclick="medioFijo(this)">Débito automático en tarjeta</button></div>
+    <input type="hidden" id="xMedio" value="${medio}">
+    <div id="xTjB"><label>Tarjeta</label><select id="xTj">${opcTarjetas(f.tarjeta_id)}</select></div>
+    <div class="dos"><div><label>Monto estimado</label><input id="xMonto" inputmode="decimal" value="${f.monto_estimado??''}"></div>
+    <div><label>Moneda</label><select id="xMon" onchange="if($('xCta'))$('xCta').innerHTML=opcCuentas(this.value,'',true)">${opciones(['ARS','USD'], f.moneda||'ARS')}</select></div></div>
+    <div class="dos"><div><label id="xDiaL">Día de vencimiento</label><input id="xDia" type="number" min="1" max="31" value="${f.dia_vencimiento||10}"></div>
+    <div><label>Categoría</label><select id="xCat">${opciones(S.ini.categoriasGasto, f.categoria||'Servicios')}</select></div></div>
+    <div class="dos"><div><label>Lo paga</label><select id="xRes">${opciones(S.ini.personas, f.responsable||S.ini.usuario.nombre)}</select></div>
+    <div><label>Desde</label><input id="xDesde" type="month" value="${esc(f.desde||S.ini.hoy.slice(0,7))}"></div></div>
+    <label>Hasta (opcional, ej: fin del contrato)</label><input id="xHasta" type="month" value="${esc(f.hasta||'')}">
+    <div id="xCtaB">${hayCuentas()?`<label>Cuenta desde la que se suele pagar</label><select id="xCta">${opcCuentas(f.moneda||'ARS', f.cuenta_id||'', true)}</select>`:''}</div>
+    <label>Notas</label><input id="xNotas" value="${esc(f.notas||'')}" placeholder="Ej: aumenta cada 3 meses">
+    ${f.id?`<div class="checks"><label><input type="checkbox" id="xAct" ${f.activo!=='NO'?'checked':''}> Activo</label></div>`:''}
+    ${botonesModal('xOk')}`);
+  medioFijo();
+  $('xOk').onclick = async () => { ocupar($('xOk'));
+    try{ await accion('guardarFijo', [{id:f.id, nombre:$('xNom').value, monto_estimado:$('xMonto').value, moneda:$('xMon').value, dia_vencimiento:$('xDia').value,
+        categoria:$('xCat').value, responsable:$('xRes').value, desde:$('xDesde').value, hasta:$('xHasta').value, cuenta_id: $('xCta')?$('xCta').value:'',
+        medio:$('xMedio').value, tarjeta_id:$('xTj').value, notas:$('xNotas').value, activo: $('xAct') ? $('xAct').checked : true}]);
+      cerrarModal(); toast('Gasto fijo guardado'); vFijos(); }
+    catch(e){ liberar($('xOk')); toast(errorMsg(e)); } };
+}
+function medioFijo(btn){
+  if(btn){ btn.parentNode.querySelectorAll('button').forEach(b => b.classList.toggle('on', b===btn)); $('xMedio').value = btn.dataset.v; }
+  const tj = $('xMedio').value === 'Tarjeta';
+  $('xTjB').style.display = tj ? 'block' : 'none';
+  $('xCtaB').style.display = tj ? 'none' : 'block';
+  $('xDiaL').textContent = tj ? 'Día del débito' : 'Día de vencimiento';
+}
+
+// ---------- TARJETAS ----------
+async function vTarjetas(){
+  try{
+    const r = S.data.tarjetas || {tarjetas:[], compras:[]};
+    S.compras = r.compras;
+    let h = volver() + `<button class="btn full" style="margin-bottom:12px" onclick="formTarjeta()">+ Agregar tarjeta</button>`;
+    if(!r.tarjetas.length) h += `<div class="card vacio">Cargá tus tarjetas con su día de cierre y de vencimiento para que las cuotas caigan en el mes correcto.</div>`;
+    h += `<div class="grid2">`;
+    r.tarjetas.forEach(t => {
+      h += `<div class="blk"><div class="blk-top"><div><div class="n">💳 ${esc(t.nombre)}</div>
+        <div class="s">${esc(t.banco)} · ${esc(t.titular)} · cierra el ${t.dia_cierre} · vence el ${t.dia_vencimiento}</div>${t.cuenta?`<div class="s">Se paga desde ${esc(t.cuenta)}</div>`:''}</div></div>
+        ${t.activa==='NO'?'<span class="chip mal">Inactiva</span>':''}
+        <table style="margin-top:10px"><tr><th>Resumen que vence</th><th>Pesos</th><th>Dólares</th></tr>
+        ${t.meses.map(m => `<tr><td>${corto(m.periodo)}</td><td>${plata(m.ARS,'ARS')}</td><td>${m.USD?plata(m.USD,'USD'):'—'}</td></tr>`).join('')}</table>
+        <div class="s" style="margin-top:6px">Compras cargadas. Los débitos automáticos y saldos anteriores se suman en Inicio.</div>
+        <div class="blk-acc"><button class="btn sec" onclick='formTarjeta(${js({id:t.id,nombre:t.nombre,banco:t.banco,titular:t.titular,dia_cierre:t.dia_cierre,dia_vencimiento:t.dia_vencimiento,activa:t.activa,cuenta_id:t.cuenta_id})})'>Editar tarjeta</button></div></div>`;
+    });
+    h += `</div>`;
+
+    const activas = r.compras.filter(c => c.restantes > 0);
+    const lista = S.verTerminadas ? r.compras : activas;
+    const deuda = {ARS:0,USD:0}, mes = {ARS:0,USD:0}, inter = {ARS:0,USD:0};
+    activas.forEach(c => { const k=c.moneda==='USD'?'USD':'ARS'; deuda[k]+=c.saldo; mes[k]+=c.valor; if(c.interes) inter[k]+=c.interes.interes; });
+    h += `<div class="titulo">Compras en cuotas</div>`;
+    if(r.compras.length) h += `<div class="kpis" style="margin-bottom:12px"><div class="kpi"><span>Deuda en cuotas</span><b>${dos(deuda)}</b></div>
+        <div class="kpi"><span>Cuotas por mes</span><b>${dos(mes)}</b></div><div class="kpi destacado"><span>Intereses (de las que tienen precio de contado)</span><b>${linea(inter)}</b></div></div>`;
+    if(!lista.length) h += `<div class="card vacio">${r.compras.length ? 'No hay compras en curso.' : 'Las compras con tarjeta en 2 o más cuotas aparecen acá.'}</div>`;
+    h += `<div class="grid2">` + lista.map(c => {
+      const pct = c.N ? Math.round(c.pagadas / c.N * 100) : 0;
+      return `<div class="blk ${c.restantes===0?'ok':''}"><div class="blk-top"><div style="min-width:0"><div class="n">${esc(c.descripcion)}</div>
+        <div class="s">${esc(c.tarjeta)} · ${esc(c.quien)} · compra del ${fechaCorta(c.fecha)}</div></div>
+        <div class="m">${plata(c.saldo,c.moneda)}<div class="s">por pagar</div></div></div>
+        <div class="mini-grid"><div><span>Cuota</span><b>${plata(c.valor,c.moneda)}</b></div><div><span>Pagadas</span><b>${c.pagadas} de ${c.N}</b></div>
+          <div><span>Restan</span><b>${c.restantes}</b></div><div><span>Termina</span><b>${corto(c.ultimo)}</b></div></div>
+        <div class="barra"><div style="width:${pct}%"></div></div>
+        <div class="s" style="margin-top:8px">${c.interes ? textoInteres(c.interes, c.moneda) : 'Sin precio de contado: editá la compra para ver el interés.'}</div>
+        ${c.puedeEditar?`<div class="blk-acc"><button class="btn sec" onclick="editarCompra(${S.compras.indexOf(c)})">Editar compra</button></div>`:''}</div>`;
+    }).join('') + `</div>`;
+    if(r.compras.length > activas.length) h += `<button class="btn gris full" style="margin-top:12px" onclick="S.verTerminadas=!S.verTerminadas;vTarjetas()">${S.verTerminadas?'Ocultar terminadas':'Ver también las terminadas'}</button>`;
+    h += `<div class="nota">Una cuota cuenta como pagada cuando el resumen de ese mes queda cerrado en Inicio (pago total o resto pasado al mes siguiente). Las de resúmenes anteriores a cargar la tarjeta se toman como pagadas.</div>`;
+    $('app').innerHTML = h;
+  }catch(e){ fallo(e); }
+}
+function editarCompra(i){
+  const c = S.compras[i];
+  S._compraEdit = [{id:c.id, medio:'Tarjeta', tarjeta_id:c.tarjeta_id, descripcion:c.descripcion, monto:c.monto, moneda:c.moneda, fecha:c.fecha,
+    cuotas:c.N, precio_contado:c.precio_contado, categoria:c.categoria, quien:c.quien, notas:c.notas}];
+  editarGasto(0, S._compraEdit);
+}
+function formTarjeta(t){
+  t = t || {};
+  abrirModal(`<h3 style="margin-top:0">${t.id?'Editar':'Nueva'} tarjeta</h3>
+    <label>Nombre</label><input id="tNom" value="${esc(t.nombre||'')}" placeholder="Ej: Visa Macro">
+    <div class="dos"><div><label>Banco</label><input id="tBan" value="${esc(t.banco||'')}"></div>
+    <div><label>Titular</label><select id="tTit">${opciones(S.ini.personas, t.titular||S.ini.usuario.nombre)}</select></div></div>
+    <div class="dos"><div><label>Día de cierre</label><input id="tCie" type="number" min="1" max="31" value="${t.dia_cierre||''}"></div>
+    <div><label>Día de vencimiento</label><input id="tVen" type="number" min="1" max="31" value="${t.dia_vencimiento||''}"></div></div>
+    ${hayCuentas()?`<label>Cuenta desde la que se suele pagar</label><select id="tCta">${opcCuentas('ARS', t.cuenta_id||'', true)}</select>`:''}
+    ${t.id ? `<div class="checks"><label><input type="checkbox" id="tAct" ${t.activa!=='NO'?'checked':''}> Activa</label></div>`:''}
+    <div class="nota">Si el cierre cambia mes a mes, poné el más habitual. Las compras posteriores al cierre pasan al resumen siguiente.</div>${botonesModal('tOk')}`);
+  $('tOk').onclick = async () => { ocupar($('tOk'));
+    try{ await accion('guardarTarjeta', [{id:t.id, nombre:$('tNom').value, banco:$('tBan').value, titular:$('tTit').value, dia_cierre:$('tCie').value, dia_vencimiento:$('tVen').value,
+        cuenta_id: $('tCta')?$('tCta').value:'', activa: $('tAct') ? $('tAct').checked : true}]);
+      cerrarModal(); toast('Tarjeta guardada'); vTarjetas(); }
+    catch(e){ liberar($('tOk')); toast(errorMsg(e)); } };
+}
+
+// ---------- CRÉDITOS ----------
+async function vCreditos(){
+  try{
+    const cs = S.data.creditos || [];
+    S._creds = cs;
+    let h = volver() + `<button class="btn full" style="margin-bottom:12px" onclick="formCredito()">+ Agregar crédito</button>`;
+    if(!cs.length) h += `<div class="card vacio">Todavía no hay créditos cargados.</div>`;
+    const tot = {ARS:0,USD:0}, cuota = {ARS:0,USD:0}, inter = {ARS:0,USD:0};
+    cs.filter(c=>c.activo!=='NO').forEach(c => { const k=c.moneda==='USD'?'USD':'ARS'; tot[k]+=c.saldo; if(c.restantes>0) cuota[k]+=Number(c.monto_cuota); if(c.interes) inter[k]+=c.interes.interes; });
+    if(cs.length) h += `<div class="kpis" style="margin-bottom:12px"><div class="kpi"><span>Cuotas por mes</span><b>${dos(cuota)}</b></div><div class="kpi"><span>Saldo pendiente</span><b>${dos(tot)}</b></div><div class="kpi destacado"><span>Intereses totales (de los que tienen capital)</span><b>${linea(inter)}</b></div></div>`;
+    h += `<div class="grid2">` + cs.map((c,i) => {
+      const pct = c.cantidad_cuotas ? Math.round(c.pagadas / c.cantidad_cuotas * 100) : 0;
+      return `<div class="blk ${c.activo==='NO'?'gris':''}"><div class="blk-top"><div style="min-width:0"><div class="n">🏦 ${esc(c.nombre)}</div>
+        <div class="s">${esc(c.entidad)} · lo maneja ${esc(c.responsable)}${c.cuenta?' · desde '+esc(c.cuenta):''}</div></div>
+        <div class="m">${plata(c.saldo,c.moneda)}<div class="s">por pagar</div></div></div>
+        <div class="mini-grid"><div><span>Cuota</span><b>${plata(c.monto_cuota,c.moneda)}</b></div><div><span>Pagadas</span><b>${c.pagadas} de ${c.cantidad_cuotas}</b></div>
+          <div><span>Restan</span><b>${c.restantes}</b></div><div><span>Termina</span><b>${corto(c.ultimo)}</b></div></div>
+        <div class="barra"><div style="width:${pct}%"></div></div>
+        <div class="s" style="margin-top:8px">${c.interes ? textoInteres(c.interes, c.moneda) : 'Cargá el monto recibido para ver el interés.'}</div>
+        ${c.activo==='NO'?'<span class="chip mal">Cerrado</span>':''}
+        ${c.puedeEditar?`<div class="blk-acc"><button class="btn sec" onclick="formCredito(S._creds[${i}])">Editar</button></div>`:''}</div>`;
+    }).join('') + `</div>`;
+    h += `<div class="nota">Cada cuota aparece en Inicio con su monto estimado y cuenta como pagada cuando la confirmás. Si la cuota varía (UVA), usá "Ajustar" ese mes o editá el valor acá.</div>`;
+    $('app').innerHTML = h;
+  }catch(e){ fallo(e); }
+}
+function formCredito(c){
+  c = c || {};
+  abrirModal(`<h3 style="margin-top:0">${c.id?'Editar':'Nuevo'} crédito</h3>
+    <label>Nombre</label><input id="cNom" value="${esc(c.nombre||'')}" placeholder="Ej: Préstamo personal Macro">
+    <div class="dos"><div><label>Entidad</label><input id="cEnt" value="${esc(c.entidad||'')}"></div>
+    <div><label>Lo maneja</label><select id="cRes">${opciones(S.ini.personas, c.responsable||S.ini.usuario.nombre)}</select></div></div>
+    <div class="dos"><div><label>Monto recibido (capital)</label><input id="cCap" inputmode="decimal" value="${c.monto_recibido||''}" placeholder="Para el interés"></div>
+    <div><label>Moneda</label><select id="cMon" onchange="if($('cCta'))$('cCta').innerHTML=opcCuentas(this.value,'',true)">${opciones(['ARS','USD'], c.moneda||'ARS')}</select></div></div>
+    <div class="dos"><div><label>Valor de la cuota</label><input id="cMonto" inputmode="decimal" value="${c.monto_cuota||''}"></div>
+    <div><label>Cantidad de cuotas</label><input id="cN" type="number" min="1" value="${c.cantidad_cuotas||''}"></div></div>
+    <label>Vence la 1ª cuota</label><input id="cPri" type="date" value="${esc(c.primer_vencimiento||'')}" oninput="sugerirPrevias()">
+    <label>Cuotas ya pagadas antes de usar la app</label>
+    <div style="display:flex;gap:6px"><input id="cPrev" type="number" min="0" value="${c.cuotas_pagadas_previas||0}"><button class="btn sec" type="button" onclick="sugerirPrevias(true)">Calcular</button></div>
+    <div id="cPrevTxt" class="s" style="margin-top:4px">Poné la fecha de la 1ª cuota original (por ej. enero) y cuántas ya pagaron.</div>
+    ${hayCuentas()?`<label>Cuenta desde la que se suele pagar</label><select id="cCta">${opcCuentas(c.moneda||'ARS', c.cuenta_id||'', true)}</select>`:''}
+    <label>Notas</label><input id="cNotas" value="${esc(c.notas||'')}" placeholder="Ej: tasa, UVA, débito automático">
+    ${c.id ? `<div class="checks"><label><input type="checkbox" id="cAct" ${c.activo!=='NO'?'checked':''}> Activo (destildar si se canceló)</label></div>`:''}
+    ${botonesModal('cOk')}`);
+  $('cOk').onclick = async () => { ocupar($('cOk'));
+    try{ await accion('guardarCredito', [{id:c.id, nombre:$('cNom').value, entidad:$('cEnt').value, responsable:$('cRes').value, monto_cuota:$('cMonto').value,
+        moneda:$('cMon').value, cantidad_cuotas:$('cN').value, primer_vencimiento:$('cPri').value, notas:$('cNotas').value, activo: $('cAct') ? $('cAct').checked : true,
+        cuotas_pagadas_previas:$('cPrev').value, monto_recibido:$('cCap').value, cuenta_id: $('cCta')?$('cCta').value:''}]);
+      cerrarModal(); toast('Crédito guardado'); vCreditos(); }
+    catch(e){ liberar($('cOk')); toast(errorMsg(e)); } };
+}
+function sugerirPrevias(aplicar){
+  const f = $('cPri').value; if(!f) return;
+  const hoy = S.ini.hoy.slice(0,7), p = f.slice(0,7);
+  const n = Math.max(0, (+hoy.slice(0,4) - +p.slice(0,4))*12 + (+hoy.slice(5,7) - +p.slice(5,7)));
+  const N = parseInt($('cN').value)||0, v = N ? Math.min(n, N) : n;
+  $('cPrevTxt').textContent = `Vencieron ${v} cuota(s) antes de ${nombreMes(hoy)}.` + (aplicar ? '' : ' Tocá "Calcular" para usar ese número.');
+  if(aplicar) $('cPrev').value = v;
+}
+
+// ---------- CUENTAS ----------
+async function vCuentas(){
+  try{
+    const cs = S.data.cuentas || [];
+    S._ctas = cs;
+    let h = volver() + `<div class="dos" style="margin-bottom:12px"><button class="btn" onclick="formCuenta()">+ Agregar cuenta</button>
+      ${cs.length>1?`<button class="btn sec" onclick="S.tipoCarga='transferencia';ir('cargar')">🔄 Transferir</button>`:''}</div>`;
+    if(!cs.length) h += `<div class="card vacio">Cargá las cuentas de cada uno (banco, Mercado Pago, efectivo, dólares) con el saldo de hoy. Desde ahí la app suma y resta lo que se confirme.</div>`;
+    const tot = {ARS:0,USD:0}; cs.filter(c=>c.activa!=='NO').forEach(c => tot[c.moneda==='USD'?'USD':'ARS'] += c.saldo);
+    if(cs.length) h += `<div class="kpis" style="margin-bottom:12px"><div class="kpi"><span>Total en pesos</span><b>${plata(tot.ARS,'ARS')}</b></div><div class="kpi"><span>Total en dólares</span><b>${plata(tot.USD,'USD')}</b></div></div>`;
+    h += `<div class="grid2">` + cs.map((c,i) => `<div class="blk ${c.activa==='NO'?'gris':''}"><div class="blk-top"><div style="min-width:0"><div class="n">👛 ${esc(c.nombre)}</div>
+        <div class="s">${esc(c.banco)}${c.banco?' · ':''}${esc(c.titular)} · ${c.moneda}</div>
+        <div class="s">Saldo inicial ${plata(c.saldo_inicial,c.moneda)} al ${fechaCorta(c.fecha_saldo)} · ${c.movimientos.length} movimiento${c.movimientos.length===1?'':'s'}</div></div>
+        <div class="m ${c.saldo<0?'neg':''}">${plata(c.saldo,c.moneda)}</div></div>
+        <div id="ext${i}" style="display:none;margin-top:8px">${c.movimientos.length ? c.movimientos.map(m => `<div class="fila"><div><div>${esc(m.detalle)}</div><div class="s">${fechaCorta(m.fecha)} · ${esc(m.tipo)} · ${esc(m.quien||'')}</div></div>
+          <div class="der"><div class="${m.monto<0?'neg':'pos'}">${m.monto>0?'+':''}${plata(m.monto,c.moneda)}</div><div class="s">saldo ${plata(m.saldo,c.moneda)}</div>
+          ${m.trf_id?`<button class="btn peligro" style="margin-top:4px;padding:5px 9px;font-size:12px" onclick="borrarTrf('${m.trf_id}')">Borrar</button>`:''}</div></div>`).join('') : '<div class="vacio">Sin movimientos desde el saldo inicial.</div>'}</div>
+        <div class="blk-acc"><button class="btn sec" onclick="var d=$('ext${i}');d.style.display=d.style.display==='none'?'block':'none'">Movimientos</button>
+          ${c.puedeEditar?`<button class="btn gris" onclick="formCuenta(S._ctas[${i}])">Editar</button>`:''}</div></div>`).join('') + `</div>`;
+    h += `<div class="nota">Saldo = saldo inicial + ingresos cobrados − gastos pagados ± transferencias, de todo lo asociado a la cuenta. Lo estimado o pendiente no mueve las cuentas. Si no coincide con el banco, editá la cuenta y poné el saldo real.</div>`;
+    $('app').innerHTML = h;
+  }catch(e){ fallo(e); }
+}
+function formCuenta(c){
+  c = c || {};
+  abrirModal(`<h3 style="margin-top:0">${c.id?'Editar':'Nueva'} cuenta</h3>
+    <label>Nombre</label><input id="kNom" value="${esc(c.nombre||'')}" placeholder="Ej: Caja de ahorro Macro, Mercado Pago, Efectivo">
+    <div class="dos"><div><label>Banco / billetera</label><input id="kBan" value="${esc(c.banco||'')}"></div>
+    <div><label>Titular</label><select id="kTit">${opciones(S.ini.personas, c.titular||S.ini.usuario.nombre)}</select></div></div>
+    <div class="dos"><div><label>Moneda</label><select id="kMon">${opciones(['ARS','USD'], c.moneda||'ARS')}</select></div>
+    <div><label>Saldo actual</label><input id="kSal" inputmode="decimal" value="${c.saldo_inicial ?? ''}" placeholder="0"></div></div>
+    <label>Fecha del saldo</label><input id="kFec" type="date" value="${esc(c.fecha_saldo||S.ini.hoy)}">
+    ${c.id ? `<div class="checks"><label><input type="checkbox" id="kAct" ${c.activa!=='NO'?'checked':''}> Activa</label></div>`:''}
+    <div class="nota">Poné el saldo que ves ahora en el banco. Todo lo que cargues a partir de este momento se suma o resta.</div>${botonesModal('kOk')}`);
+  $('kOk').onclick = async () => { ocupar($('kOk'));
+    try{ await accion('guardarCuenta', [{id:c.id, nombre:$('kNom').value, banco:$('kBan').value, titular:$('kTit').value, moneda:$('kMon').value,
+        saldo_inicial:$('kSal').value, fecha_saldo:$('kFec').value, activa: $('kAct') ? $('kAct').checked : true}]);
+      cerrarModal(); toast('Cuenta guardada'); vCuentas(); }
+    catch(e){ liberar($('kOk')); toast(errorMsg(e)); } };
+}
+async function borrarTrf(id){ if(!confirm('¿Borrar esta transferencia? Se borra de las dos cuentas.')) return;
+  try{ await accion('borrarTransferencia', [id]); toast('Borrada'); vCuentas(); }catch(e){ toast(errorMsg(e)); } }
+
+// ---------- FLUJO ----------
+async function vFlujo(){
+  try{
+    const fs = S.data.flujo || [];
+    const cot = S.ini.cotizacion, conIng = fs[0] && fs[0].ingresos, conCr = puede('creditos');
+    let acum = 0;
+    let h = volver() + `<div class="nota" style="margin:0 0 12px">Estimado mes a mes: lo confirmado con el monto real, lo demás con el estimado. "Otros" son gastos sueltos, que solo aparecen cuando se cargan.${cot?` Acumulado en pesos con dólar ${esc(S.ini.cotizacionTipo)} a ${plata(cot,'ARS')}.`:''}</div><div class="grid2">`;
+    fs.forEach(r => {
+      if(conIng) acum += equiv(r.saldo);
+      const T = r.porTipo;
+      h += `<div class="blk ${conIng ? (equiv(r.saldo)<0?'mal':'ok') : ''}">
+        <div class="blk-top"><div class="n" style="text-transform:capitalize">${nombreMes(r.periodo)}</div>${conIng?`<div class="m ${equiv(r.saldo)<0?'neg':'pos'}">${dos(r.saldo)}<div class="s">saldo del mes</div></div>`:''}</div>
+        <div class="mini-grid">
+          ${conIng?`<div><span>Ingresos</span><b>${dos(r.ingresos.previsto)}</b></div>`:''}
+          <div><span>Gastos</span><b>${dos(r.egresos.estimado)}</b></div>
+          <div><span>Tarjetas</span><b>${dos(T.Tarjeta)}</b></div>
+          ${conCr?`<div><span>Créditos</span><b>${dos(T.Credito)}</b></div>`:''}
+          <div><span>Fijos y débitos</span><b>${dos(T.Fijo)}</b></div>
+          <div><span>Otros</span><b>${dos(T.Gasto)}</b></div>
+        </div>
+        ${conIng && cot ? `<div class="s" style="margin-top:8px">Acumulado ≈ <b class="${acum<0?'neg':'pos'}">${plata(acum,'ARS')}</b></div>` : ''}</div>`;
+    });
+    h += `</div>`;
+    $('app').innerHTML = h;
+  }catch(e){ fallo(e); }
+}
+
+// ---------- USUARIOS ----------
+const NOMBRE_MOD = {inicio:'Inicio (resumen y vencimientos)', cargar:'Cargar gastos', movimientos:'Ver movimientos', ingresos:'Ingresos', fijos:'Gastos fijos', tarjetas:'Tarjetas', creditos:'Créditos', cuentas:'Cuentas bancarias', flujo:'Flujo de fondos', usuarios:'Usuarios', config:'Configuración'};
+async function vUsuarios(){
+  try{
+    const r = S.data.usuarios || {usuarios:[], modulos:[]};
+    S._mods = r.modulos; S._usrs = r.usuarios;
+    let h = volver() + `<button class="btn full" style="margin-bottom:12px" onclick="formUsuario()">+ Agregar usuario</button><div class="grid2">`;
+    r.usuarios.forEach((u,i) => h += `<div class="blk ${u.activo==='NO'?'gris':''}"><div class="blk-top"><div style="min-width:0"><div class="n">${esc(u.nombre)}</div><div class="s">${esc(u.email)}</div></div>
+      <div>${u.rol==='admin'?'<span class="chip" style="margin:0">Admin</span>':''}</div></div>
+      <div class="s" style="margin-top:6px">${u.rol==='admin'?'Ve todo':esc(String(u.permisos).split(',').filter(Boolean).map(p=>NOMBRE_MOD[p]||p).join(', '))}</div>
+      <div class="s">Alta por ${esc(u.creado_por)} el ${esc(String(u.fecha_alta).slice(0,10))}</div>
+      <div class="blk-acc"><button class="btn sec" onclick="formUsuario(S._usrs[${i}])">Editar</button></div></div>`);
+    h += `</div><div class="nota">Para que alguien entre: dalo de alta acá con su mail de Google y mandale el link de la app. No hace falta compartir la planilla.</div>`;
+    $('app').innerHTML = h;
+  }catch(e){ fallo(e); }
+}
+function formUsuario(u){
+  u = u || {rol:'miembro', permisos:'inicio,cargar,movimientos'};
+  const p = String(u.permisos||'').split(',');
+  abrirModal(`<h3 style="margin-top:0">${u.email?'Editar':'Nuevo'} usuario</h3>
+    <label>Email (cuenta de Google)</label><input id="uEm" value="${esc(u.email||'')}" ${u.email?'disabled':''}>
+    <label>Nombre</label><input id="uNom" value="${esc(u.nombre||'')}">
+    <label>Rol</label><select id="uRol" onchange="$('uPerm').style.display=this.value==='admin'?'none':'block'">${['miembro','admin'].map(r=>`<option ${r===u.rol?'selected':''}>${r}</option>`).join('')}</select>
+    <div id="uPerm" class="checks" style="display:${u.rol==='admin'?'none':'block'}"><label style="background:none;padding:0;color:var(--sub)">Qué puede ver y hacer:</label>
+      ${S._mods.map(m=>`<label><input type="checkbox" class="uMod" value="${m}" ${p.indexOf(m)>=0?'checked':''}> ${NOMBRE_MOD[m]||m}</label>`).join('')}</div>
+    ${u.email?`<div class="checks"><label><input type="checkbox" id="uAct" ${u.activo!=='NO'?'checked':''}> Activo</label></div>`:''}
+    ${botonesModal('uOk')}`);
+  $('uOk').onclick = async () => { ocupar($('uOk'));
+    try{ const r = await accion('guardarUsuario', [{email:$('uEm').value, nombre:$('uNom').value, rol:$('uRol').value,
+        permisos:[...document.querySelectorAll('.uMod:checked')].map(x=>x.value), activo: $('uAct') ? $('uAct').checked : true}]);
+      cerrarModal(); toast(r.recordatorio || 'Usuario guardado'); vUsuarios(); }
+    catch(e){ liberar($('uOk')); toast(errorMsg(e)); } };
+}
+
+// ---------- CONFIG ----------
+async function vConfig(){
+  try{
+    const cfg = S.data.config || [];
+    let h = volver() + `<div class="card"><h3>Dólar</h3><div class="fila"><div>Cotización actual</div><div class="der t">${plata(S.ini.cotizacion,'ARS')}</div></div>
+      <button class="btn sec full" style="margin-top:8px" onclick="actCot(this)">Actualizar cotización ahora</button></div><div class="card"><h3>Ajustes</h3>`;
+    cfg.forEach(c => h += `<label>${esc(c.descripcion||c.clave)}</label><div style="display:flex;gap:6px"><input id="cfg_${esc(c.clave)}" value="${esc(c.valor)}"><button class="btn" onclick="guardaCfg('${esc(c.clave)}')">OK</button></div>`);
+    h += `</div>`;
+    $('app').innerHTML = h;
+  }catch(e){ fallo(e); }
+}
+async function guardaCfg(k){ try{ await accion('guardarConfig', [k, $('cfg_'+k).value]); toast('Guardado'); $('hogar').textContent=S.ini.hogar; vConfig(); }catch(e){ toast(errorMsg(e)); } }
+async function actCot(b){ ocupar(b); try{ const r = await accion('actualizarCotizacion', []); toast(r.manual?'Está en modo manual':'Cotización: '+plata(r.valor,'ARS')); vConfig(); }catch(e){ liberar(b); toast(errorMsg(e)); } }
+
+iniciar();
+</script>
+</body>
+</html>
