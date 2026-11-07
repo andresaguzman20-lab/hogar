@@ -129,6 +129,8 @@
 <script>
 const S = { ini:null, tab:'inicio', periodo:null, tipoCarga:'gasto', verTerminadas:false, items:[], movs:[], ings:[], compras:[] };
 const SECCIONES = {
+  apagar:['🧾','A pagar','Vencimientos y pagos del mes'],
+  acobrar:['💰','Ingresos esperados','Sueldos y cobros del mes'],
   movimientos:['📋','Movimientos','Gastos e ingresos del mes'],
   fijos:['🔁','Gastos fijos','Alquiler, servicios, débitos'],
   tarjetas:['💳','Tarjetas','Resúmenes y compras en cuotas'],
@@ -138,6 +140,7 @@ const SECCIONES = {
   usuarios:['👥','Usuarios','Quién entra y qué ve'],
   config:['⚙️','Configuración','Dólar, categorías, avisos']
 };
+const PERMISO_SECCION = { apagar:'inicio', acobrar:'ingresos' };
 const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 const TIPO_TXT = {Tarjeta:'Resumen de tarjeta', Credito:'Crédito', Fijo:'Gasto fijo', Gasto:'Gasto a pagar', Ingreso:'Ingreso'};
 
@@ -165,7 +168,53 @@ async function api(fn, ...args){
 const $ = id => document.getElementById(id);
 function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function js(o){ return esc(JSON.stringify(o)); }
-function numF(v){ const s=String(v??'').trim(); if(!s) return 0; const n = /,\d{1,2}$/.test(s) ? Number(s.replace(/\./g,'').replace(',','.')) : Number(s.replace(/,/g,'')); return isNaN(n)?0:n; }
+function numF(v){
+  if(typeof v === 'number') return v;
+  let t = String(v ?? '').trim().replace(/[^\d.,-]/g, '');
+  if(!t) return 0;
+  if(t.indexOf(',') >= 0) t = t.replace(/\./g, '').replace(',', '.');
+  else if(/^-?\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');
+  const n = Number(t); return isNaN(n) ? 0 : n;
+}
+/** 1234567.5 → "1.234.567,5" */
+function fmtNum(n){
+  if(n === '' || n === null || n === undefined || isNaN(Number(n))) return '';
+  n = Math.round(Number(n) * 100) / 100;
+  const neg = n < 0, abs = Math.abs(n);
+  const [ent, dec] = String(abs).split('.');
+  return (neg ? '-' : '') + ent.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (dec ? ',' + dec : '');
+}
+function setNum(el, n){ if(el) el.value = (n === '' || n === null) ? '' : fmtNum(n); }
+/** Da formato mientras se escribe: puntos de miles automáticos y coma para decimales (máx. 2). */
+function formatearMientrasEscribe(el, tecla){
+  let v = el.value; if(v === '') return;
+  let pos = el.selectionStart == null ? v.length : el.selectionStart;
+  // un "." tipeado cuando todavía no hay coma se toma como coma decimal
+  if(tecla === '.' && v.indexOf(',') < 0 && pos > 0 && v[pos-1] === '.'){ v = v.slice(0, pos-1) + ',' + v.slice(pos); }
+  const neg = /^\s*-/.test(v);
+  const antes = v.slice(0, pos).replace(/[^\d,]/g, '').length;
+  let s = v.replace(/[^\d,]/g, '');
+  const ic = s.indexOf(',');
+  let ent = ic >= 0 ? s.slice(0, ic) : s;
+  const dec = ic >= 0 ? s.slice(ic + 1).replace(/,/g, '').slice(0, 2) : null;
+  ent = ent.replace(/^0+(?=\d)/, '');
+  if(ent === '' && dec !== null) ent = '0';
+  const nuevo = (neg ? '-' : '') + ent.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (dec !== null ? ',' + dec : '');
+  el.value = nuevo;
+  let c = 0, p = neg ? 1 : 0;
+  while(p < nuevo.length && c < antes){ if(/[\d,]/.test(nuevo[p])) c++; p++; }
+  try{ if(document.activeElement === el) el.setSelectionRange(p, p); }catch(e){}
+}
+document.addEventListener('input', e => {
+  const el = e.target;
+  if(el && el.tagName === 'INPUT' && el.getAttribute('inputmode') === 'decimal') formatearMientrasEscribe(el, e.data);
+}, true);
+// Los montos que se muestran en formularios (vienen como 1234.5) se pasan a formato argentino una sola vez
+new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => {
+  if(!n.querySelectorAll) return;
+  const ins = (n.matches && n.matches('input[inputmode=decimal]')) ? [n] : n.querySelectorAll('input[inputmode=decimal]');
+  ins.forEach(i => { if(i.dataset.fmt) return; i.dataset.fmt = '1'; if(/^-?\d+(\.\d+)?$/.test(i.value)) i.value = fmtNum(i.value); });
+}))).observe(document.documentElement, { childList: true, subtree: true });
 function plata(n, mon){ n = Number(n)||0; return (mon==='USD'?'US$ ':'$ ') + n.toLocaleString('es-AR',{maximumFractionDigits: mon==='USD'?2:0}); }
 function dos(o){ if(!o) return '—'; const p=[]; if(o.ARS||!o.USD) p.push(plata(o.ARS,'ARS')); if(o.USD) p.push(plata(o.USD,'USD')); return p.join('<br>'); }
 function linea(o){ return dos(o).replace('<br>',' + '); }
@@ -320,17 +369,18 @@ function estado(t){ $('estado').textContent = t; $('estado').style.display = t ?
 function ocupar(b){ if(!b) return; b.disabled = true; b.dataset.txt = b.dataset.txt || b.textContent; b.textContent = 'Guardando…'; }
 function liberar(b){ if(!b) return; b.disabled = false; if(b.dataset.txt) b.textContent = b.dataset.txt; }
 function ir(tab, sinScroll){
+  if(S.tab !== tab && (tab === 'apagar' || tab === 'acobrar')) S.filtroItems = 'pend';
   S.tab = tab;
   $('bInicio').classList.toggle('on', tab==='inicio');
   $('bCargar').classList.toggle('on', tab==='cargar');
   $('bMenu').classList.toggle('on', tab!=='inicio' && tab!=='cargar');
   $('seccion').textContent = tab==='inicio' ? '' : tab==='cargar' ? 'Cargar' : tab==='menu' ? 'Menú' : (SECCIONES[tab]||['',''])[1];
   $('app').innerHTML = '<div class="cargando">Cargando…</div>';
-  ({inicio:vInicio, cargar:vCargar, menu:vMenu, movimientos:vMovimientos, fijos:vFijos, tarjetas:vTarjetas, creditos:vCreditos, cuentas:vCuentas, flujo:vFlujo, usuarios:vUsuarios, config:vConfig})[tab]();
+  ({inicio:vInicio, cargar:vCargar, menu:vMenu, apagar:vAPagar, acobrar:vACobrar, movimientos:vMovimientos, fijos:vFijos, tarjetas:vTarjetas, creditos:vCreditos, cuentas:vCuentas, flujo:vFlujo, usuarios:vUsuarios, config:vConfig})[tab]();
   if(!sinScroll) window.scrollTo(0,0);
 }
 function vMenu(){
-  const ks = Object.keys(SECCIONES).filter(k => puede(k));
+  const ks = Object.keys(SECCIONES).filter(k => puede(PERMISO_SECCION[k] || k));
   $('app').innerHTML = `<div class="tiles">${ks.map(k => `<button class="tile" onclick="ir('${k}')"><span class="ic">${SECCIONES[k][0]}</span><b>${SECCIONES[k][1]}</b><span>${SECCIONES[k][2]}</span></button>`).join('')}</div>
     ${S.instalar ? `<button class="btn full" style="margin-top:14px" onclick="instalarApp()">📲 Instalar la app en este celular</button>` : ''}
     <button class="btn gris full" style="margin-top:14px" onclick="recargar()">↻ Volver a leer la planilla</button>
@@ -369,16 +419,7 @@ async function vInicio(){
         <div class="s" style="margin-top:6px">Las cuentas solo cambian cuando confirmás un pago o un cobro.</div></div>`;
     }
 
-    const cerrado = i => i.confirmado || i.omitido;
-    const orden = (a,b) => (cerrado(a) - cerrado(b)) || (a.vence < b.vence ? -1 : 1);
-    const pend = r.egresos.filter(i => !cerrado(i)).length;
-    h += `<div class="titulo">A pagar en ${MESES[+S.periodo.slice(5,7)-1]} ${pend?`<span class="chip pend" style="margin:0">${pend} pendiente${pend>1?'s':''}</span>`:''}</div>`;
-    if(!r.egresos.length) h += `<div class="card vacio">No hay vencimientos. Cargá gastos fijos, tarjetas o créditos desde el Menú.</div>`;
-    h += `<div class="grid2">${r.egresos.slice().sort(orden).map(it => bloqueItem(it, S.items.indexOf(it))).join('')}</div>`;
-
-    if(r.ingresos.length){
-      h += `<div class="titulo">Ingresos esperados</div><div class="grid2">${r.ingresos.slice().sort(orden).map(it => bloqueItem(it, S.items.indexOf(it))).join('')}</div>`;
-    }
+    h += `<div class="grid2" style="margin-top:12px">${cuadroItems(r.egresos, 'egreso', m.egresos.aPagar)}${puede('ingresos') && r.ingresos.length ? cuadroItems(r.ingresos, 'ingreso', m.ingresos ? m.ingresos.aCobrar : null) : ''}</div>`;
 
     const T = m.porTipo;
     h += `<div class="titulo">Resumen del mes</div><div class="grid2">
@@ -417,6 +458,61 @@ async function vInicio(){
     $('app').innerHTML = h;
   }catch(e){ fallo(e); }
 }
+
+const cerradoIt = i => i.confirmado || i.omitido;
+const ordenIt = (a,b) => (cerradoIt(a) - cerradoIt(b)) || (a.vence < b.vence ? -1 : 1);
+function contarItems(lista){
+  const hoy = S.ini.hoy;
+  return {
+    vencidos: lista.filter(i => !cerradoIt(i) && i.vence < hoy).length,
+    porVencer: lista.filter(i => !cerradoIt(i) && i.vence >= hoy).length,
+    listos: lista.filter(i => i.confirmado).length,
+    proximo: lista.filter(i => !cerradoIt(i)).sort(ordenIt)[0]
+  };
+}
+/** Cuadro resumen tocable (A pagar / Ingresos esperados). */
+function cuadroItems(lista, sentido, total){
+  const ing = sentido === 'ingreso', c = contarItems(lista);
+  const destino = ing ? 'acobrar' : 'apagar';
+  let h = `<button class="blk ${c.vencidos ? 'mal' : (c.vencidos + c.porVencer) ? 'pend' : 'ok'}" style="text-align:left;cursor:pointer;width:100%;font:inherit;color:inherit" onclick="ir('${destino}')">
+    <div class="blk-top"><div><div class="n">${ing ? '💰 Ingresos esperados' : '🧾 A pagar'}</div><div class="s">${MESES[+S.periodo.slice(5,7)-1]} · tocá para ver el detalle</div></div>
+    <div class="m ${ing ? 'pos' : (hay(total) ? 'neg' : '')}">${dos(total)}<div class="s">${ing ? 'falta cobrar' : 'falta pagar'}</div></div></div>
+    <div class="mini-grid" style="grid-template-columns:repeat(3,1fr)">
+      ${ing ? '' : `<div><span>Vencidos</span><b class="${c.vencidos ? 'neg' : ''}">${c.vencidos}</b></div>`}
+      <div><span>${ing ? 'A cobrar' : 'Por vencer'}</span><b>${c.porVencer + (ing ? c.vencidos : 0)}</b></div>
+      <div><span>${ing ? 'Cobrados' : 'Pagados'}</span><b class="pos">${c.listos}</b></div>
+    </div>`;
+  if(c.proximo) h += `<div class="s" style="margin-top:10px">Próximo: <b>${esc(c.proximo.nombre)}</b> · ${fechaCorta(c.proximo.vence)} · ${linea(c.proximo.parcial ? c.proximo.falta : c.proximo.ref)}</div>`;
+  else if(lista.length) h += `<div class="s" style="margin-top:10px">${ing ? 'Todo cobrado este mes 👍' : 'Todo pagado este mes 👍'}</div>`;
+  else h += `<div class="s" style="margin-top:10px">${ing ? 'No hay ingresos esperados.' : 'No hay vencimientos. Cargá gastos fijos, tarjetas o créditos desde el Menú.'}</div>`;
+  return h + `</button>`;
+}
+/** Detalle: A pagar (egresos) o Ingresos esperados. */
+async function vDetalleItems(sentido){
+  try{
+    const ing = sentido === 'ingreso', vista = ing ? 'vACobrar' : 'vAPagar';
+    const r = (await datosMes(S.periodo)).resumen;
+    S.items = r.egresos.concat(r.ingresos);
+    const lista = ing ? r.ingresos : r.egresos;
+    const m = r.mes, c = contarItems(lista);
+    S.filtroItems = S.filtroItems || 'pend';
+    const filtros = [['pend', ing ? 'A cobrar' : 'Pendientes'], ['listos', ing ? 'Cobrados' : 'Pagados'], ['todos', 'Todos']];
+    const ver = lista.filter(i => S.filtroItems === 'todos' ? true : S.filtroItems === 'pend' ? !cerradoIt(i) : cerradoIt(i)).sort(ordenIt);
+    let h = volver() + barraMes(vista);
+    h += `<div class="kpis" style="margin-bottom:12px">
+      <div class="kpi"><span>${ing ? 'Falta cobrar' : 'Falta pagar'}</span><b class="${ing ? 'pos' : 'neg'}">${dos(ing ? (m.ingresos ? m.ingresos.aCobrar : null) : m.egresos.aPagar)}</b></div>
+      <div class="kpi"><span>${ing ? 'Ya cobrado' : 'Ya pagado'}</span><b class="pos">${dos(ing ? (m.ingresos ? m.ingresos.cobrado : null) : m.egresos.pagado)}</b></div>
+      ${ing ? '' : `<div class="kpi"><span>Vencidos</span><b class="${c.vencidos ? 'neg' : ''}">${c.vencidos}</b></div>`}
+      <div class="kpi"><span>${ing ? 'A cobrar' : 'Por vencer'}</span><b>${c.porVencer + (ing ? c.vencidos : 0)}</b></div></div>`;
+    h += `<div class="opciones" style="margin-bottom:12px">${filtros.map(f => `<button class="${S.filtroItems===f[0]?'on':''}" onclick="S.filtroItems='${f[0]}';${vista}()">${f[1]}</button>`).join('')}</div>`;
+    if(!ver.length) h += `<div class="card vacio">${S.filtroItems==='pend' ? (ing ? 'No queda nada por cobrar este mes.' : 'No queda nada por pagar este mes. 👍') : 'No hay ítems para mostrar.'}</div>`;
+    h += `<div class="grid2">${ver.map(it => bloqueItem(it, S.items.indexOf(it))).join('')}</div>`;
+    $('app').innerHTML = h;
+  }catch(e){ fallo(e); }
+}
+function vAPagar(){ return vDetalleItems('egreso'); }
+function vACobrar(){ return vDetalleItems('ingreso'); }
+function rerender(){ ir(S.tab, true); }
 
 function bloqueItem(it, idx){
   const esIng = it.tipo === 'Ingreso';
@@ -483,14 +579,14 @@ function confirmar(idx){
     try{
       await accion('confirmarItem', [{tipo:it.tipo, ref_id:it.ref_id, periodo:it.periodo, nombre:it.nombre, forma:f, fecha_pago:$('cFecha').value, notas:$('cNotas').value,
         pagos: mons.map(mn => ({monto:$('cm_'+mn).value, moneda:mn, cuenta_id: $('cc_'+mn) ? $('cc_'+mn).value : ''}))}]);
-      cerrarModal(); toast(esIng?'Cobro confirmado':f==='Parcial'?'Pago parcial registrado':'Pago confirmado'); vInicio();
+      cerrarModal(); toast(esIng?'Cobro confirmado':f==='Parcial'?'Pago parcial registrado':'Pago confirmado'); rerender();
     }catch(e){ liberar($('cOk')); toast(errorMsg(e)); } };
 }
 function formaPago(btn){
   btn.parentNode.querySelectorAll('button').forEach(b => b.classList.toggle('on', b===btn));
   const parc = btn.dataset.f === 'Parcial';
   $('cParcNota').style.display = parc ? 'block' : 'none';
-  document.querySelectorAll('[id^=cm_]').forEach(i => { i.value = parc ? '' : i.dataset.def; });
+  document.querySelectorAll('[id^=cm_]').forEach(i => { i.value = parc ? '' : fmtNum(i.dataset.def); });
   if(parc){ const i = document.querySelector('[id^=cm_]'); if(i) i.focus(); }
 }
 function ajustar(idx){
@@ -503,23 +599,23 @@ function ajustar(idx){
   $('aOk').onclick = async () => { ocupar($('aOk'));
     const montos = {}; mons.forEach(mn => montos[mn] = $('am_'+mn).value);
     try{ await accion('ajustarItem', [{tipo:it.tipo, ref_id:it.ref_id, periodo:it.periodo, nombre:it.nombre, montos:montos}]);
-      cerrarModal(); toast('Estimado actualizado'); vInicio(); }
+      cerrarModal(); toast('Estimado actualizado'); rerender(); }
     catch(e){ liberar($('aOk')); toast(errorMsg(e)); } };
 }
 async function arrastrar(idx){
   const it = S.items[idx];
   if(!confirm(`¿Pasar ${linea(it.falta)} al resumen de ${nombreMes(sumarMeses(it.periodo,1))}? Este resumen queda cerrado.`)) return;
-  try{ await accion('arrastrarItem', [{tipo:it.tipo, ref_id:it.ref_id, periodo:it.periodo, nombre:it.nombre}]); toast('Saldo pasado al mes que viene'); vInicio(); }catch(e){ toast(errorMsg(e)); }
+  try{ await accion('arrastrarItem', [{tipo:it.tipo, ref_id:it.ref_id, periodo:it.periodo, nombre:it.nombre}]); toast('Saldo pasado al mes que viene'); rerender(); }catch(e){ toast(errorMsg(e)); }
 }
 async function omitir(idx){
   const it = S.items[idx];
   if(!confirm(`¿${it.tipo==='Ingreso'?'No se cobra':'No se paga'} "${it.nombre}" en ${nombreMes(it.periodo)}?`)) return;
-  try{ await accion('omitirItem', [{tipo:it.tipo, ref_id:it.ref_id, periodo:it.periodo, nombre:it.nombre}]); toast('Listo'); vInicio(); }catch(e){ toast(errorMsg(e)); }
+  try{ await accion('omitirItem', [{tipo:it.tipo, ref_id:it.ref_id, periodo:it.periodo, nombre:it.nombre}]); toast('Listo'); rerender(); }catch(e){ toast(errorMsg(e)); }
 }
 async function deshacer(idx, que){
   const it = S.items[idx];
   if(que==='confirmacion' && !confirm('¿Deshacer? Se borran los pagos registrados de este ítem y se revierten en las cuentas.')) return;
-  try{ await accion('deshacerItem', [{tipo:it.tipo, ref_id:it.ref_id, periodo:it.periodo, nombre:it.nombre, que:que}]); cerrarModal(); toast('Deshecho'); vInicio(); }catch(e){ toast(errorMsg(e)); }
+  try{ await accion('deshacerItem', [{tipo:it.tipo, ref_id:it.ref_id, periodo:it.periodo, nombre:it.nombre, que:que}]); cerrarModal(); toast('Deshecho'); rerender(); }catch(e){ toast(errorMsg(e)); }
 }
 
 // ---------- FORMULARIO DE GASTO (cargar y editar) ----------
@@ -574,8 +670,8 @@ function ctaGasto(){ if(!$('fCta')) return; const m=$('fMon').value;
 function syncCuota(desde){
   if(!$('fCuotas')) return;
   const n = Math.max(1, parseInt($('fCuotas').value)||1);
-  if(desde==='cuota'){ const v = numF($('fValCuota').value); $('fMonto').value = v ? Math.round(v*n*100)/100 : ''; }
-  else { const t = numF($('fMonto').value); $('fValCuota').value = t ? Math.round(t/n*100)/100 : ''; }
+  if(desde==='cuota'){ const v = numF($('fValCuota').value); setNum($('fMonto'), v ? Math.round(v*n*100)/100 : ''); }
+  else { const t = numF($('fMonto').value); setNum($('fValCuota'), t ? Math.round(t/n*100)/100 : ''); }
   previa();
 }
 function previa(){
@@ -628,6 +724,7 @@ function recCambio(){
 
 // ---------- CARGAR ----------
 function vCargar(){
+  S._trfCuentas = null;
   const I = S.ini;
   const tipos = [['gasto','💸 Gasto']].concat(puede('ingresos')?[['ingreso','💰 Ingreso']]:[]).concat(puede('cuentas')?[['transferencia','🔄 Entre cuentas']]:[]);
   if(!tipos.some(t=>t[0]===S.tipoCarga)) S.tipoCarga='gasto';
@@ -667,7 +764,7 @@ async function guardarIng(){
   catch(e){ liberar(b); toast(errorMsg(e)); }
 }
 function trfMon(){
-  const cs = S.ini.cuentas, a = cs.find(c=>c.id===$('tDesde').value), b = cs.find(c=>c.id===$('tHacia').value);
+  const cs = (S._trfCuentas || []).concat(S.ini.cuentas), a = cs.find(c=>c.id===$('tDesde').value), b = cs.find(c=>c.id===$('tHacia').value);
   const dist = a && b && a.moneda !== b.moneda;
   $('tMontoL').textContent = 'Monto que sale' + (a ? ' ('+a.moneda+')' : '');
   $('tDestB').style.display = dist ? 'block' : 'none';
@@ -938,7 +1035,7 @@ async function vCuentas(){
         <div class="m ${c.saldo<0?'neg':''}">${plata(c.saldo,c.moneda)}</div></div>
         <div id="ext${i}" style="display:none;margin-top:8px">${c.movimientos.length ? c.movimientos.map(m => `<div class="fila"><div><div>${esc(m.detalle)}</div><div class="s">${fechaCorta(m.fecha)} · ${esc(m.tipo)} · ${esc(m.quien||'')}</div></div>
           <div class="der"><div class="${m.monto<0?'neg':'pos'}">${m.monto>0?'+':''}${plata(m.monto,c.moneda)}</div><div class="s">saldo ${plata(m.saldo,c.moneda)}</div>
-          ${m.trf_id?`<button class="btn peligro" style="margin-top:4px;padding:5px 9px;font-size:12px" onclick="borrarTrf('${m.trf_id}')">Borrar</button>`:''}</div></div>`).join('') : '<div class="vacio">Sin movimientos desde el saldo inicial.</div>'}</div>
+          ${m.trf_id?`<div style="display:flex;gap:4px;justify-content:flex-end;margin-top:4px"><button class="btn sec" style="padding:5px 9px;font-size:12px" onclick="editarTrf('${m.trf_id}')">Editar</button><button class="btn peligro" style="padding:5px 9px;font-size:12px" onclick="borrarTrf('${m.trf_id}')">Borrar</button></div>`:''}</div></div>`).join('') : '<div class="vacio">Sin movimientos desde el saldo inicial.</div>'}</div>
         <div class="blk-acc"><button class="btn sec" onclick="var d=$('ext${i}');d.style.display=d.style.display==='none'?'block':'none'">Movimientos</button>
           ${c.puedeEditar?`<button class="btn gris" onclick="formCuenta(S._ctas[${i}])">Editar</button>`:''}</div></div>`).join('') + `</div>`;
     h += `<div class="nota">Saldo = saldo inicial + ingresos cobrados − gastos pagados ± transferencias, de todo lo asociado a la cuenta. Lo estimado o pendiente no mueve las cuentas. Si no coincide con el banco, editá la cuenta y poné el saldo real.</div>`;
@@ -962,8 +1059,28 @@ function formCuenta(c){
       cerrarModal(); toast('Cuenta guardada'); vCuentas(); }
     catch(e){ liberar($('kOk')); toast(errorMsg(e)); } };
 }
+function editarTrf(id){
+  const t = (S.data.transferencias || []).find(x => x.id === id);
+  if(!t){ toast('No se encontró la transferencia'); return; }
+  if(t.puedeEditar === false){ toast('Solo puede editarla quien la cargó o un admin'); return; }
+  const cs = S.data.cuentas || [];
+  const op = sel => cs.map(c=>`<option value="${c.id}" ${c.id===sel?'selected':''}>${esc(c.nombre)} · ${esc(c.titular)} (${c.moneda})</option>`).join('');
+  abrirModal(`<h3 style="margin-top:0">Editar transferencia</h3>
+    <label>Desde</label><select id="tDesde" onchange="trfMon()">${op(t.desde_id)}</select>
+    <label>Hacia</label><select id="tHacia" onchange="trfMon()">${op(t.hacia_id)}</select>
+    <div class="dos"><div><label id="tMontoL">Monto</label><input id="tMonto" inputmode="decimal" value="${t.monto}"></div>
+    <div><label>Fecha</label><input id="tFecha" type="date" value="${esc(String(t.fecha).slice(0,10))}"></div></div>
+    <div id="tDestB" style="display:none"><label id="tDestL">Monto que llegó</label><input id="tDest" inputmode="decimal" value="${t.monto_destino||''}"><div id="tTc" class="s" style="margin-top:4px"></div></div>
+    <label>Notas</label><input id="tNotas" value="${esc(t.notas||'')}" placeholder="Opcional">
+    ${botonesModal('tOk')}`);
+  S._trfCuentas = cs; trfMon();
+  $('tOk').onclick = async () => { ocupar($('tOk'));
+    try{ await accion('editarTransferencia', [{id:t.id, desde_id:$('tDesde').value, hacia_id:$('tHacia').value, monto:$('tMonto').value, monto_destino:$('tDest').value, fecha:$('tFecha').value, notas:$('tNotas').value}]);
+      cerrarModal(); toast('Transferencia actualizada'); rerender(); }
+    catch(e){ liberar($('tOk')); toast(errorMsg(e)); } };
+}
 async function borrarTrf(id){ if(!confirm('¿Borrar esta transferencia? Se borra de las dos cuentas.')) return;
-  try{ await accion('borrarTransferencia', [id]); toast('Borrada'); vCuentas(); }catch(e){ toast(errorMsg(e)); } }
+  try{ await accion('borrarTransferencia', [id]); toast('Borrada'); rerender(); }catch(e){ toast(errorMsg(e)); } }
 
 // ---------- FLUJO ----------
 async function vFlujo(){
